@@ -109,13 +109,18 @@ void ACameraPawn::PawnClientRestart()
 
 void ACameraPawn::Pan(const FInputActionValue& Value)
 {
-    const FVector2D Input = Value.Get<FVector2D>();
-    const float DeltaSeconds = GetWorld()->GetDeltaSeconds();
+	AddPanInput(Value.Get<FVector2D>());
+}
 
+void ACameraPawn::AddPanInput(const FVector2D& Input)
+{
+	const float DeltaSeconds = GetWorld()->GetDeltaSeconds();
+
+	// Swizzle puts W/S on Y and A/D on X; world X is forward, world Y is right
 	const FRotator YawRotation(0.0f, Yaw, 0.0f);
-    const FVector Offset = YawRotation.RotateVector(FVector(Input.Y, Input.X, 0.0f));
+	const FVector Offset = YawRotation.RotateVector(FVector(Input.Y, Input.X, 0.0f));
 
-    AddActorWorldOffset(Offset * PanSpeed * DeltaSeconds);
+	AddActorWorldOffset(Offset * PanSpeed * DeltaSeconds);
 }
 
 void ACameraPawn::Zoom(const FInputActionValue& Value)

@@ -30,6 +30,12 @@ public:
 	 */
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
+	/**
+	 * @brief Moves the camera on the ground plane relative to its yaw.
+	 * @param Input X = sideways (A/D), Y = forward (W/S), expected within -1..1.
+	 */
+	void AddPanInput(const FVector2D& Input);
+	
 protected:
 	/** @brief Applies the editable arm length and pitch to the spring arm. */
 	virtual void BeginPlay() override;
@@ -42,7 +48,7 @@ protected:
 	 * @param Value Pan input as @c FVector2D (X = right, Y = forward).
 	 */
 	void Pan(const FInputActionValue& Value);
-
+	
 	/**
 	 * @brief Changes the arm length, clamped to the zoom limits.
 	 * @param Value Zoom input as @c float (mouse wheel axis).
