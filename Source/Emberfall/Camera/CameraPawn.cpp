@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Camera/CameraComponent.h"
+#include "Emberfall/EmberfallLog.h"
 #include "GameFramework/SpringArmComponent.h"
 
 
@@ -33,31 +34,31 @@ void ACameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (EnhancedInputComponent == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: input component is not a UEnhancedInputComponent"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Error, TEXT("%s: input component is not a UEnhancedInputComponent"), *GetNameSafe(this));
 		return;
 	}
 
 	if (PanAction == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: PanAction is not assigned"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Error, TEXT("%s: PanAction is not assigned"), *GetNameSafe(this));
 		return;
 	}
 
 	if (ZoomAction == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: ZoomAction is not assigned"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Error, TEXT("%s: ZoomAction is not assigned"), *GetNameSafe(this));
 		return;
 	}
-	
+
 	if (RotateModeAction == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: RotateModeAction is not assigned"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Error, TEXT("%s: RotateModeAction is not assigned"), *GetNameSafe(this));
 		return;
 	}
 
 	if (LookAction == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: LookAction is not assigned"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Error, TEXT("%s: LookAction is not assigned"), *GetNameSafe(this));
 		return;
 	}
 
@@ -94,13 +95,13 @@ void ACameraPawn::PawnClientRestart()
 		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer);
 	if (Subsystem == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: no EnhancedInput subsystem"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Warning, TEXT("%s: no EnhancedInput subsystem"), *GetNameSafe(this));
 		return;
 	}
 
 	if (MappingContext == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: MappingContext is not assigned"), *GetNameSafe(this));
+		UE_LOG(LogEmberfall, Warning, TEXT("%s: MappingContext is not assigned"), *GetNameSafe(this));
 		return;
 	}
 
