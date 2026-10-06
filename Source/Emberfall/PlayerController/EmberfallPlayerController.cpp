@@ -1,15 +1,15 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
-
-#include "EmberfallPlayerController.h"
+#include "Emberfall/PlayerController/EmberfallPlayerController.h"
+#include "Emberfall/Camera/CameraPawn.h"
+#include "Emberfall/Characters/Player/PlayerUnit.h"
+#include "Emberfall/EmberfallLog.h"
+#include "Emberfall/UI/EmberfallHUD.h"
 
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Emberfall/EmberfallLog.h"
-#include "Emberfall/Camera/CameraPawn.h"
-#include "Emberfall/Characters/Player/PlayerUnit.h"
-#include "Emberfall/UI/EmberfallHUD.h"
+#include "Selection/SelectionComponent.h"
 
 
 AEmberfallPlayerController::AEmberfallPlayerController()
@@ -18,6 +18,8 @@ AEmberfallPlayerController::AEmberfallPlayerController()
 
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
+
+	SelectionComponent = CreateDefaultSubobject<USelectionComponent>(TEXT("SelectionComponent"));
 }
 
 void AEmberfallPlayerController::BeginPlay()
@@ -64,15 +66,37 @@ void AEmberfallPlayerController::SetupInputComponent()
 		return;
 	}
 
-	if (SelectAction == nullptr)
+	// Each action is checked on its own, so all missing assets show up in one run
+	if (SelectAction != nullptr)
+	{
+		EnhancedInput->BindAction(SelectAction, ETriggerEvent::Started, this, &AEmberfallPlayerController::OnSelectStarted);
+		EnhancedInput->BindAction(SelectAction, ETriggerEvent::Completed, this, &AEmberfallPlayerController::OnSelectCompleted);
+	}
+	else
 	{
 		UE_LOG(LogEmberfall, Error, TEXT("%s: SelectAction is not set."), *GetNameSafe(this));
-		return;
 	}
 
-	EnhancedInput->BindAction(SelectAction, ETriggerEvent::Started, this, &AEmberfallPlayerController::OnSelectStarted);
-	EnhancedInput->BindAction(SelectAction, ETriggerEvent::Completed, this, &AEmberfallPlayerController::OnSelectCompleted);
+	if (AddToSelectionAction != nullptr)
+	{
+		EnhancedInput->BindAction(AddToSelectionAction, ETriggerEvent::Started, this, &AEmberfallPlayerController::OnAddToSelectionStarted);
+		EnhancedInput->BindAction(AddToSelectionAction, ETriggerEvent::Completed, this, &AEmberfallPlayerController::OnAddToSelectionCompleted);
+	}
+	else
+	{
+		UE_LOG(LogEmberfall, Error, TEXT("%s: AddToSelectionAction is not set."), *GetNameSafe(this));
+	}
+
+	if (CommandAction != nullptr)
+	{
+		EnhancedInput->BindAction(CommandAction, ETriggerEvent::Started, this, &AEmberfallPlayerController::OnCommandStarted);
+	}
+	else
+	{
+		UE_LOG(LogEmberfall, Error, TEXT("%s: CommandAction is not set."), *GetNameSafe(this));
+	}
 }
+
 
 void AEmberfallPlayerController::Tick(float DeltaSeconds)
 {
@@ -81,12 +105,9 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
 	//
 	// Hover
 	//
-	
-	if (!SelectionDragState.IsDragging())
-	{
-		UpdateHover();
-	}
-	
+
+	SelectionComponent->UpdateHover();
+
 	//
 	// Mouse position
 	//
@@ -98,22 +119,13 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
 		return;
 	}
 	const FVector2D MousePos{ MouseX, MouseY };
-	
+
 	//
 	// Selection drag
 	//
-	
-	SelectionDragState.Update(MousePos, DragThreshold);
-	
-	//
-	// Drag hover
-	//
 
-	if (SelectionDragState.IsDragging())
-	{
-		UpdateDragHover(MousePos);
-	}
-	
+	SelectionComponent->UpdateDrag(MousePos);
+
 	//
 	// Edge scrolling
 	//
@@ -124,58 +136,7 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
 	}
 }
 
-void AEmberfallPlayerController::UpdateHover()
-{
-	FHitResult Hit = {};
-	GetHitResultUnderCursor(ECC_Visibility, false, Hit);
-	APlayerUnit* NewHovered = Cast<APlayerUnit>(Hit.GetActor());
-	
-	if (NewHovered == HoveredUnit)
-	{
-		return;
-	}
-	
-	if (HoveredUnit != nullptr)
-	{
-		HoveredUnit->SetHovered(false);
-	}
-	
-	HoveredUnit = NewHovered;
-	
-	if (HoveredUnit != nullptr)
-	{
-		HoveredUnit->SetHovered(true);
-	}
-}
-
-void AEmberfallPlayerController::UpdateDragHover(const FVector2D& MousePos)
-{
-	AEmberfallHUD* EmberfallHUD = Cast<AEmberfallHUD>(GetHUD());
-	if (EmberfallHUD == nullptr)
-	{
-		return;
-	}
-	
-	TArray<APlayerUnit*> InRect;
-	GetUnitsInRect(SelectionDragState.GetDragStart(), MousePos, InRect);
-	
-	for (APlayerUnit* Unit : DragHoveredUnits)
-	{
-		if (!InRect.Contains(Unit))
-		{
-			Unit->SetHovered(false);
-		}
-	}
-	
-	for (APlayerUnit* Unit : InRect)
-	{
-		Unit->SetHovered(true);
-	}
-
-	DragHoveredUnits = InRect;
-}
-
-void AEmberfallPlayerController::OnSelectStarted(const FInputActionValue& Value)
+void AEmberfallPlayerController::OnSelectStarted([[maybe_unused]] const FInputActionValue& Value)
 {
 	float MouseX{ 0.0f };
 	float MouseY{ 0.0f };
@@ -185,83 +146,36 @@ void AEmberfallPlayerController::OnSelectStarted(const FInputActionValue& Value)
 		return;
 	}
 
-	SelectionDragState.Begin(FVector2D{ MouseX, MouseY });
+	SelectionComponent->BeginPress(FVector2D{ MouseX, MouseY });
 }
 
-void AEmberfallPlayerController::OnSelectCompleted(const FInputActionValue& Value)
+void AEmberfallPlayerController::OnSelectCompleted([[maybe_unused]] const FInputActionValue& Value)
 {
-	const FVector2D DragStart = SelectionDragState.GetDragStart();
 	float MouseX = 0.0f;
 	float MouseY = 0.0f;
-	GetMousePosition(MouseX, MouseY);
-	
-	const bool bWasDrag = SelectionDragState.Complete();
-	if (bWasDrag)
+	if (!GetMousePosition(MouseX, MouseY))
 	{
-		for (APlayerUnit* Unit : DragHoveredUnits)
-		{
-			Unit->SetHovered(false);
-		}
-		
-		TArray<APlayerUnit*> InRect;
-		AEmberfallHUD* EmberfallHUD = Cast<AEmberfallHUD>(GetHUD());
-		if (EmberfallHUD != nullptr)
-		{
-			GetUnitsInRect(DragStart, FVector2D{ MouseX, MouseY }, InRect);
-		}
-		
-		DragHoveredUnits.Reset();
-		ClearSelection();
-
-		for (APlayerUnit* Unit : InRect)
-		{
-			Unit->SetSelected(true);
-			SelectedUnits.Add(Unit);
-		}
+		// Release outside the viewport: drop the press, otherwise it would stay stuck
+		UE_LOG(LogEmberfall, Verbose, TEXT("%s: No mouse position, press cancelled."), *GetNameSafe(this));
+		SelectionComponent->CancelPress();
 		return;
 	}
-	
-	ClearSelection();
-	
-	if (HoveredUnit != nullptr)
-	{
-		HoveredUnit->SetSelected(true);
-		SelectedUnits.Add(HoveredUnit);
-	}
+
+	SelectionComponent->EndPress(FVector2D{ MouseX, MouseY });
 }
 
-void AEmberfallPlayerController::ClearSelection()
+void AEmberfallPlayerController::OnAddToSelectionStarted([[maybe_unused]] const FInputActionValue& Value)
 {
-	for (APlayerUnit* Unit : SelectedUnits)
-	{
-		Unit->SetSelected(false);
-	}
-	SelectedUnits.Reset();
+	SelectionComponent->SetAddMode(true);
 }
 
-void AEmberfallPlayerController::GetUnitsInRect(const FVector2D& A, const FVector2D& B, TArray<APlayerUnit*>& OutUnits)
+void AEmberfallPlayerController::OnAddToSelectionCompleted([[maybe_unused]] const FInputActionValue& Value)
 {
-	OutUnits.Reset();
+	SelectionComponent->SetAddMode(false);
+}
 
-	const FVector2D Min{ FMath::Min(A.X, B.X), FMath::Min(A.Y, B.Y) };
-	const FVector2D Max{ FMath::Max(A.X, B.X), FMath::Max(A.Y, B.Y) };
-
-	for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
-	{
-		APlayerUnit* Unit = *It;
-
-		FVector2D ScreenPos;
-		if (!ProjectWorldLocationToScreen(Unit->GetActorLocation(), ScreenPos))
-		{
-			continue;
-		}
-
-		if (ScreenPos.X >= Min.X && ScreenPos.X <= Max.X &&
-			ScreenPos.Y >= Min.Y && ScreenPos.Y <= Max.Y)
-		{
-			OutUnits.Add(Unit);
-		}
-	}
+void AEmberfallPlayerController::OnCommandStarted([[maybe_unused]] const FInputActionValue& Value)
+{
 }
 
 void AEmberfallPlayerController::UpdateEdgeScroll(const FVector2D& MousePos) const

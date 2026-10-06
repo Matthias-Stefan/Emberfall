@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+
 #include "SelectionSettings.generated.h"
+
 
 /**
  * @brief Single source of truth for selection visuals (outline colors and drag box).
@@ -17,6 +19,15 @@ class EMBERFALL_API USelectionSettings : public UDeveloperSettings
 public:
 	USelectionSettings();
 
+#if WITH_EDITOR
+	/**
+	 * @brief Copies @c HoverColor and @c SelectColor into the defaults of the outline parameter collection
+	 *        whenever a setting changes, so the asset never drifts from the project settings.
+	 * @param PropertyChangedEvent The property that was edited.
+	 */
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+	
 	/** @brief Fill color of the drag box: @c HoverColor with @c BoxFillAlpha. */
 	FLinearColor GetBoxFillColor() const;
 

@@ -1,10 +1,10 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
-
-#include "EmberfallHUD.h"
-
+#include "Emberfall/UI/EmberfallHUD.h"
 #include "Emberfall/EmberfallLog.h"
 #include "Emberfall/PlayerController/EmberfallPlayerController.h"
+#include "Emberfall/PlayerController/Selection/SelectionComponent.h"
+#include "Emberfall/PlayerController/Selection/SelectionDragState.h"
 #include "Emberfall/Settings/SelectionSettings.h"
 
 
@@ -27,12 +27,18 @@ void AEmberfallHUD::DrawHUD()
 		return;
 	}
 	
-	const FSelectionDragState& DragState = Controller->GetSelectionDragState();
+	const USelectionComponent* Selection = Controller->GetSelectionComponent();
+	if (Selection == nullptr)
+	{
+		return;
+	}
+
+	const FSelectionDragState& DragState = Selection->GetDragState();
 	if (!DragState.IsDragging())
 	{
 		return;
 	}
-	
+
 	float MouseX = 0.0f;
 	float MouseY = 0.0f;
 	if (!Controller->GetMousePosition(MouseX, MouseY))
@@ -53,7 +59,6 @@ void AEmberfallHUD::DrawHUD()
 	//
 	
 	const USelectionSettings* Settings = GetDefault<USelectionSettings>();
-
 	DrawRect(Settings->GetBoxFillColor(), Min.X, Min.Y, Size.X, Size.Y);
 
 	const FLinearColor BorderColor = Settings->GetBoxBorderColor();

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
-
 #pragma once
+
 
 /**
  * @brief Tracks a press-and-drag on the select button and tells a click from a drag.

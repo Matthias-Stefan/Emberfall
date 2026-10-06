@@ -2,11 +2,18 @@
 
 #pragma once
 
+#include "Emberfall/Characters/Player/PlayerUnitTypes.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "PlayerUnitTypes.h"
+
 #include "PlayerUnit.generated.h"
 
+
+/**
+ * @brief Controllable character of the player. Shows hover and selection state through
+ *        @c OnSelectionStateChanged; movement is driven by an AI controller.
+ */
 UCLASS()
 class EMBERFALL_API APlayerUnit : public ACharacter
 {

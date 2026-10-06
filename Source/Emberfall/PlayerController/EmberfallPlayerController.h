@@ -3,19 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "SelectionDragState.h"
-#include "Emberfall/Characters/Player/PlayerUnit.h"
 #include "GameFramework/PlayerController.h"
+
 #include "EmberfallPlayerController.generated.h"
 
-
-struct FInputActionValue;
-class APlayerUnit;
 class UInputAction;
 class UInputMappingContext;
+class USelectionComponent;
+struct FInputActionValue;
+
 
 /**
- * @brief Player controller for the top-down view; keeps the mouse cursor visible and usable.
+ * @brief Player controller for the top-down view; owns the input bindings and forwards them to its components.
  */
 UCLASS()
 class EMBERFALL_API AEmberfallPlayerController : public APlayerController
@@ -26,8 +25,8 @@ public:
 	/** @brief Default constructor. */
 	AEmberfallPlayerController();
 
-	/** @brief Returns the select press/drag state; the HUD reads it to draw the selection box. */
-	const FSelectionDragState& GetSelectionDragState() const { return SelectionDragState; }
+	/** @brief Returns the selection component; the HUD reads the drag state from it. */
+	USelectionComponent* GetSelectionComponent() const { return SelectionComponent; }
 	
 protected:
 	/** @brief Sets the input mode so game input and the visible cursor work together. */
@@ -45,42 +44,28 @@ protected:
 private:
 	//~=============================================================================
 	// Selection
-	
-	/** @brief Traces under the cursor and updates @c HoveredUnit. */
-	void UpdateHover();
-	
-	/**
-	 * @brief Hovers all units inside the drag box and un-hovers those that left it.
-	 * @param MousePos Mouse position in viewport pixels.
-	 */
-	void UpdateDragHover(const FVector2D& MousePos);
-	
-	/**
-	 * @brief Begins tracking the press in @c SelectionDragState.
-	 * @param Value Unused.
-	 */
+
+	/** @brief Select button went down: starts a click or drag. */
 	void OnSelectStarted(const FInputActionValue& Value);
-	
-	/**
-     * @brief Selects @c HoveredUnit, or clears the selection when clicking empty space.
-     * @param Value Unused.
-     */
-    void OnSelectCompleted(const FInputActionValue& Value);
-	
-	/** @brief Deselects all units in @c SelectedUnits. */
-	void ClearSelection();
-	
-	/**
-	 * @brief Collects all player units whose screen bounds touch the given rectangle.
-	 * @param A First corner in viewport pixels.
-	 * @param B Opposite corner in viewport pixels.
-	 * @param OutUnits Receives the units found (cleared first).
-	 */
-	void GetUnitsInRect(const FVector2D& A, const FVector2D& B, TArray<APlayerUnit*>& OutUnits);
+
+	/** @brief Select button went up: finishes the click or drag. */
+	void OnSelectCompleted(const FInputActionValue& Value);
+
+	/** @brief Shift went down: further selections add to the current one. */
+	void OnAddToSelectionStarted(const FInputActionValue& Value);
+
+	/** @brief Shift went up: selections replace the current one again. */
+	void OnAddToSelectionCompleted(const FInputActionValue& Value);
 	
 	//~=============================================================================
+	// Commands
+
+	/** @brief Orders the selected units to the cursor position. */
+	void OnCommandStarted(const FInputActionValue& Value);
+
+	//~=============================================================================
 	// Camera
-	
+
 	/**
 	 * @brief Pans the camera when the mouse is near a screen edge.
 	 * @param MousePos Mouse position in viewport pixels.
@@ -88,45 +73,46 @@ private:
 	void UpdateEdgeScroll(const FVector2D& MousePos) const;
 	
 protected:
-    /** @brief Enables panning the camera at the screen edges. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera|EdgeScroll")
-    bool bEdgeScrollEnabled{ true };
+	//~=============================================================================
+	// Input
 
-    /** @brief Distance to the screen edge in pixels at which scrolling starts. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera|EdgeScroll", meta = (ClampMin = "1"))
-	float EdgeScrollMargin{ 20.0f };
-	
-	/** @brief Locks the mouse to the viewport (needed for edge scrolling). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
-	EMouseLockMode MouseLockMode{ EMouseLockMode::LockAlways };
-	
-	/** @brief Mapping context containing @c SelectAction. */
+	/** @brief Mapping context containing all gameplay actions. */
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> GameplayMappingContext;
 
 	/** @brief Left mouse button: click and drag select. */
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> SelectAction;
-	
-	/** @brief Distance in pixels the mouse must move before a press counts as a drag. */
-	UPROPERTY(EditDefaultsOnly, Category = "Input", meta = (ClampMin = "1"))
-	float DragThreshold{ 8.0f };
-	
-private:
-	/** @brief Unit currently under the cursor. */
-	UPROPERTY()
-	TObjectPtr<APlayerUnit> HoveredUnit{ nullptr };
 
-	/** @brief Units currently hovered by the drag box. */
-	UPROPERTY()
-	TArray<TObjectPtr<APlayerUnit>> DragHoveredUnits;
+	/** @brief Shift: adds to the current selection instead of replacing it. */
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> AddToSelectionAction;
+
+	/** @brief Right mouse button: orders the selected units to the cursor position. */
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> CommandAction;
 	
-	
-	/** @brief Units in the current selection. */
-	UPROPERTY()
-	TArray<TObjectPtr<APlayerUnit>> SelectedUnits;
+	//~=============================================================================
+	// Camera
+
+	/** @brief Enables panning the camera at the screen edges. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera|EdgeScroll")
+	bool bEdgeScrollEnabled{ true };
+
+	/** @brief Distance to the screen edge in pixels at which scrolling starts. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera|EdgeScroll", meta = (ClampMin = "1"))
+	float EdgeScrollMargin{ 20.0f };
+
+	/** @brief How the mouse is locked to the viewport (@c LockAlways is needed for edge scrolling). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera|EdgeScroll")
+	EMouseLockMode MouseLockMode{ EMouseLockMode::LockAlways };
 	
 private:
-	/** @brief Tracks the select button press to tell a click from a drag-box selection. */
-	FSelectionDragState SelectionDragState;
+	//~=============================================================================
+	// Selection
+
+	/** @brief Hover, click and drag-box selection of player units. */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<USelectionComponent> SelectionComponent;
+	
 };

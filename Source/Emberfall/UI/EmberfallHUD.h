@@ -9,6 +9,7 @@
 
 class APlayerUnit;
 
+
 /**
  * @brief HUD that draws the drag-selection box on screen.
  *        Reads the drag state from @c AEmberfallPlayerController; the box colors are tuned in Blueprint.

@@ -1,12 +1,11 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
+#include "Emberfall/Camera/CameraPawn.h"
+#include "Emberfall/EmberfallLog.h"
 
-#include "CameraPawn.h"
-
+#include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Camera/CameraComponent.h"
-#include "Emberfall/EmberfallLog.h"
 #include "GameFramework/SpringArmComponent.h"
 
 

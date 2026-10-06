@@ -1,9 +1,8 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
+#include "Emberfall/Characters/Player/PlayerUnit.h"
+#include "Emberfall/Characters/Player/PlayerUnitTypes.h"
 
-#include "PlayerUnit.h"
-
-#include "PlayerUnitTypes.h"
 #include "Components/CapsuleComponent.h"
 
 
