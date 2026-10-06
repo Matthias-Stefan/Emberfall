@@ -23,15 +23,6 @@ protected:
 	virtual void DrawHUD() override;
 	
 protected:
-	/** @brief Fill color of the selection box. */
-	UPROPERTY(EditDefaultsOnly, Category = "Selection")
-	FLinearColor BoxFillColor{ 0.2f, 0.6f, 1.0f, 0.15f };
-
-	/** @brief Border color of the selection box. */
-	UPROPERTY(EditDefaultsOnly, Category = "Selection")
-	FLinearColor BoxBorderColor{ 0.2f, 0.6f, 1.0f, 0.9f };
-
-	/** @brief Border thickness in pixels. */
-	UPROPERTY(EditDefaultsOnly, Category = "Selection", meta = (ClampMin = "1"))
-	float BoxBorderThickness{ 1.0f };
+	/** @brief Set after the missing-controller error was logged, so it appears only once. */
+	bool bLoggedMissingController{ false };
 };

@@ -3,17 +3,27 @@
 
 #include "EmberfallHUD.h"
 
+#include "Emberfall/EmberfallLog.h"
 #include "Emberfall/PlayerController/EmberfallPlayerController.h"
+#include "Emberfall/Settings/SelectionSettings.h"
 
 
 void AEmberfallHUD::DrawHUD()
 {
 	Super::DrawHUD();
 	
+	//
+	// Get drag state
+	//
+	
 	const AEmberfallPlayerController* Controller = Cast<AEmberfallPlayerController>(GetOwningPlayerController());
 	if (Controller == nullptr)
 	{
-		// Log
+		if (!bLoggedMissingController)
+		{
+			UE_LOG(LogEmberfall, Error, TEXT("%s: Owning controller is not an AEmberfallPlayerController."), *GetNameSafe(this));
+			bLoggedMissingController = true;
+		}
 		return;
 	}
 	
@@ -30,15 +40,26 @@ void AEmberfallHUD::DrawHUD()
 		return;
 	}
 	
+	//
+	// Build rect
+	//
+	
 	const FVector2D Start = DragState.GetDragStart();
 	const FVector2D Min{ FMath::Min(Start.X, MouseX), FMath::Min(Start.Y, MouseY) };
 	const FVector2D Size{ FMath::Abs(MouseX - Start.X), FMath::Abs(MouseY - Start.Y) };
 	
-	DrawRect(BoxFillColor, Min.X, Min.Y, Size.X, Size.Y);
+	//
+	// Draw
+	//
 	
-	const float T = BoxBorderThickness;
-	DrawRect(BoxBorderColor, Min.X, Min.Y, Size.X, T);
-	DrawRect(BoxBorderColor, Min.X, Min.Y + Size.Y - T, Size.X, T);
-	DrawRect(BoxBorderColor, Min.X, Min.Y, T, Size.Y);
-	DrawRect(BoxBorderColor, Min.X + Size.X - T, Min.Y, T, Size.Y);
+	const USelectionSettings* Settings = GetDefault<USelectionSettings>();
+
+	DrawRect(Settings->GetBoxFillColor(), Min.X, Min.Y, Size.X, Size.Y);
+
+	const FLinearColor BorderColor = Settings->GetBoxBorderColor();
+	const float T = Settings->BoxBorderThickness;
+	DrawRect(BorderColor, Min.X, Min.Y, Size.X, T);
+	DrawRect(BorderColor, Min.X, Min.Y + Size.Y - T, Size.X, T);
+	DrawRect(BorderColor, Min.X, Min.Y, T, Size.Y);
+	DrawRect(BorderColor, Min.X + Size.X - T, Min.Y, T, Size.Y);
 }

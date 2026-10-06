@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Outline-Shader: Pixel-Inspektor</title>
+<style>
+:root{
+  --bg:#f6f5f1;--surface:#ffffff;--card:#efeee8;--text:#1f1f1c;--text2:#5f5e5a;--border:rgba(0,0,0,.14);
+  --accent:#534AB7;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#1b1b19;--surface:#242422;--card:#2c2c29;--text:#ecebe6;--text2:#a8a69e;--border:rgba(255,255,255,.18);--accent:#AFA9EC;}
+}
+:root[data-theme="dark"]{--bg:#1b1b19;--surface:#242422;--card:#2c2c29;--text:#ecebe6;--text2:#a8a69e;--border:rgba(255,255,255,.18);--accent:#AFA9EC;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+main{max-width:760px;margin:0 auto;padding:24px 16px 40px;}
+h1{font-size:22px;font-weight:500;margin:0 0 4px;}
+p.lead{color:var(--text2);margin:0 0 20px;font-size:15px;max-width:62ch;}
+.controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin:0 0 12px;font-size:14px;}
+.controls label{display:flex;align-items:center;gap:8px;}
+select{background:var(--surface);color:var(--text);border:.5px solid var(--border);border-radius:8px;padding:6px 8px;font:inherit;}
+input[type=range]{width:100px;accent-color:var(--accent);}
+canvas{width:100%;max-width:616px;display:block;border:.5px solid var(--border);border-radius:8px;cursor:crosshair;touch-action:none;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:12px 0 0;max-width:616px;}
+.card{background:var(--card);border-radius:8px;padding:12px;}
+.card .k{font-size:13px;color:var(--text2);}
+.card .v{font-size:20px;font-weight:500;}
+.card .v.s{font-size:15px;line-height:1.9;}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:14px 0 0;font-size:13px;color:var(--text2);max-width:616px;}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--c);}
+details{margin:24px 0 0;max-width:616px;border:.5px solid var(--border);border-radius:8px;background:var(--surface);}
+summary{cursor:pointer;padding:10px 14px;font-size:14px;color:var(--text2);}
+pre{margin:0;padding:12px 14px;overflow-x:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;border-top:.5px solid var(--border);}
+</style>
+</head>
+<body>
+<main>
+  <h1>Outline-Shader: Pixel-Inspektor</h1>
+  <p class="lead">Jedes Kästchen ist ein Pixel. Fahr mit der Maus (oder dem Finger) darüber, um zu sehen, was der Shader für genau diesen Pixel tut.</p>
+
+  <div class="controls">
+    <label>Figur A
+      <select id="sa"><option value="0">0 (nichts)</option><option value="1">1 (Hover)</option><option value="2" selected>2 (Selected)</option></select>
+    </label>
+    <label>Figur B
+      <select id="sb"><option value="0">0 (nichts)</option><option value="1" selected>1 (Hover)</option><option value="2">2 (Selected)</option></select>
+    </label>
+    <label>Width <input type="range" id="w" min="1" max="6" step="1" value="2"><span id="wo">2</span></label>
+    <label>Samples <input type="range" id="n" min="4" max="16" step="4" value="8"><span id="no">8</span></label>
+    <label><input type="checkbox" id="st"> nur Stencil zeigen</label>
+  </div>
+
+  <canvas id="c" width="616" height="364" aria-label="Pixelraster mit zwei Figuren und Outline"></canvas>
+
+  <div class="cards">
+    <div class="card"><div class="k">Center</div><div class="v" id="rc">-</div></div>
+    <div class="card"><div class="k">Neighbor (max)</div><div class="v" id="rn">-</div></div>
+    <div class="card"><div class="k">Edge</div><div class="v" id="re">-</div></div>
+    <div class="card"><div class="k">Ergebnis</div><div class="v s" id="rr">-</div></div>
+  </div>
+
+  <div class="legend">
+    <span style="--c:#000">schwarzer Rahmen: untersuchter Pixel</span>
+    <span style="--c:#1D9E75">grün: Figur gesehen</span>
+    <span style="--c:#E24B4A">rot: nichts gesehen</span>
+  </div>
+
+  <details>
+    <summary>Shader-Code (HLSL, Custom-Node)</summary>
+<pre>float2 ViewportUV = GetDefaultSceneTextureUV(Parameters, 14);
+float3 Scene = SceneTextureLookup(ViewportUV, 14, false).rgb;
+float Center = SceneTextureLookup(ViewportUV, 25, false).r;
+
+// Inside a marked unit: no outline here, skip the ring
+if (Center &gt; 0.1)
+{
+    return Scene;
+}
+
+// Size of one pixel in UV space
+float2 PixelStep = View.ViewSizeAndInvSize.zw * Width;
+
+// Strongest stencil value found on a ring around this pixel
+float Neighbor = 0.0;
+for (int i = 0; i &lt; 8; i++)
+{
+    float Angle = 6.2831853 * i / 8.0;
+    float2 Offset = float2(cos(Angle), sin(Angle)) * PixelStep;
+    Neighbor = max(Neighbor, SceneTextureLookup(ViewportUV + Offset, 25, false).r);
+}
+
+// Edge: pixel itself is unmarked, a neighbour is marked
+float Edge = saturate(Neighbor) * (1.0 - saturate(Center));
+
+// Stencil 2 (Selected) wins over 1 (Hovered)
+float3 OutlineColor = (Neighbor &gt; 1.5) ? SelectColor : HoverColor;
+
+return lerp(Scene, OutlineColor, Edge);</pre>
+  </details>
+</main>
+
+<script>
+const W=44,H=26,S=14;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const HOV='#9696ff',SEL='#ffc932';
+let mx=-1,my=-1;
+
+function isDark(){
+  const t=document.documentElement.getAttribute('data-theme');
+  if(t==='dark')return true;
+  if(t==='light')return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function stencil(){
+  const a=+$('sa').value,b=+$('sb').value,g=[];
+  for(let y=0;y<H;y++){g.push([]);for(let x=0;x<W;x++){
+    let v=0;
+    if(((x-12)/5)**2+((y-13)/7)**2<=1)v=Math.max(v,a);
+    if(((x-31)/4)**2+((y-13)/6)**2<=1)v=Math.max(v,b);
+    g[y].push(v);}}
+  return g;
+}
+function samplePts(x,y,wd,n){
+  const p=[];
+  for(let i=0;i<n;i++){
+    const a=2*Math.PI*i/n;
+    p.push([Math.round(x+Math.cos(a)*wd),Math.round(y-Math.sin(a)*wd)]);
+  }
+  return p;
+}
+function look(g,x,y){return(x<0||y<0||x>=W||y>=H)?0:g[y][x];}
+function calc(g,x,y,wd,n){
+  const c=g[y][x];
+  if(c>0)return{c,nb:0,edge:0,out:'Szene (Early-Out)'};
+  let nb=0;
+  for(const[sx,sy]of samplePts(x,y,wd,n))nb=Math.max(nb,look(g,sx,sy));
+  const edge=Math.min(1,nb);
+  let out='Szene';
+  if(edge>0)out=nb>1.5?'SelectColor':'HoverColor';
+  return{c,nb,edge,out};
+}
+function draw(){
+  const wd=+$('w').value,n=+$('n').value,only=$('st').checked,dark=isDark();
+  const BG=dark?'#3a3a36':'#d9d7cd',FIG=dark?'#8a8880':'#8a8880',GRID=dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)';
+  const MARK=dark?'#ffffff':'#1a1a1a';
+  $('wo').textContent=wd;$('no').textContent=n;
+  const g=stencil();
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const r=calc(g,x,y,wd,n);
+    let col=g[y][x]>0?FIG:BG;
+    if(only){col=g[y][x]==2?SEL:g[y][x]==1?HOV:BG;}
+    else if(r.edge>0)col=r.nb>1.5?SEL:HOV;
+    ctx.fillStyle=col;ctx.fillRect(x*S,y*S,S,S);
+    ctx.strokeStyle=GRID;ctx.lineWidth=1;ctx.strokeRect(x*S+.5,y*S+.5,S-1,S-1);
+  }
+  if(mx>=0){
+    const r=calc(g,mx,my,wd,n);
+    const cx=mx*S+S/2,cy=my*S+S/2;
+    ctx.strokeStyle=MARK;ctx.lineWidth=2;ctx.strokeRect(mx*S+1,my*S+1,S-2,S-2);
+    if(r.c===0){
+      ctx.strokeStyle=dark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.35)';
+      ctx.setLineDash([3,3]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(cx,cy,wd*S,0,7);ctx.stroke();ctx.setLineDash([]);
+      for(const[sx,sy]of samplePts(mx,my,wd,n)){
+        const v=look(g,sx,sy),px=sx*S+S/2,py=sy*S+S/2;
+        ctx.strokeStyle=dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)';
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();
+        ctx.fillStyle=v>0?'#1D9E75':'#E24B4A';
+        ctx.beginPath();ctx.arc(px,py,4,0,7);ctx.fill();
+        ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+      }
+    }
+    $('rc').textContent=r.c;
+    $('rn').textContent=r.c>0?'(übersprungen)':r.nb;
+    $('re').textContent=r.edge;
+    $('rr').textContent=r.out;
+  }
+}
+function pointer(e){
+  const b=cv.getBoundingClientRect(),k=cv.width/b.width;
+  mx=Math.floor((e.clientX-b.left)*k/S);my=Math.floor((e.clientY-b.top)*k/S);
+  if(mx<0||my<0||mx>=W||my>=H)mx=-1;
+  draw();
+}
+cv.addEventListener('pointermove',pointer);
+cv.addEventListener('pointerdown',pointer);
+['sa','sb','w','n','st'].forEach(id=>$(id).addEventListener('input',draw));
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+draw();
+</script>
+</body>
+</html>
