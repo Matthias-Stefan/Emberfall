@@ -8,7 +8,18 @@ public class Emberfall : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DeveloperSettings" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core", 
+			"CoreUObject", 
+			"Engine", 
+			"InputCore", 
+			"EnhancedInput", 
+			"DeveloperSettings", 
+			"AIModule", 
+			"NavigationSystem", 
+			"GameplayTasks"
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "WaveTable", "WaveTable", "WaveTable" });
 

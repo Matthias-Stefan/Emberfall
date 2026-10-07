@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Emberfall/Characters/Player/PlayerUnitAIController.h"
 #include "Selection/SelectionComponent.h"
 
 
@@ -176,6 +177,34 @@ void AEmberfallPlayerController::OnAddToSelectionCompleted([[maybe_unused]] cons
 
 void AEmberfallPlayerController::OnCommandStarted([[maybe_unused]] const FInputActionValue& Value)
 {
+	const TArray<TObjectPtr<APlayerUnit>> SelectedUnits = SelectionComponent->GetSelectedUnits();
+	if (SelectedUnits.IsEmpty())
+	{
+		return;
+	}
+	
+	FHitResult Hit;
+	if (!GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+	{
+		return;
+	}
+	
+	for (auto& Unit : SelectedUnits)
+	{
+		if (!IsValid(Unit))
+		{
+			continue;
+		}
+		
+		APlayerUnitAIController* UnitController = Cast<APlayerUnitAIController>(Unit->GetController());
+		if (UnitController == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s has no APlayerUnitAIController"), *GetNameSafe(Unit));
+			continue;
+		}
+
+		UnitController->MoveToLocation(Hit.Location, -1.f, true, true, true);
+	}
 }
 
 void AEmberfallPlayerController::UpdateEdgeScroll(const FVector2D& MousePos) const
