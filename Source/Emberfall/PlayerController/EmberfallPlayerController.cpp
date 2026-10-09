@@ -2,15 +2,14 @@
 
 #include "Emberfall/PlayerController/EmberfallPlayerController.h"
 #include "Emberfall/Camera/CameraPawn.h"
-#include "Emberfall/Characters/Player/PlayerUnit.h"
-#include "Emberfall/EmberfallLog.h"
-#include "Emberfall/UI/EmberfallHUD.h"
+#include "Emberfall/Core/EmberfallLog.h"
+#include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
+#include "Emberfall/Gameplay/Characters/Player/PlayerUnitAIController.h"
+#include "Emberfall/PlayerController/Selection/SelectionComponent.h"
 
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Emberfall/Characters/Player/PlayerUnitAIController.h"
-#include "Selection/SelectionComponent.h"
 
 
 AEmberfallPlayerController::AEmberfallPlayerController()
@@ -103,6 +102,25 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// TEMP: remove with IA_ToggleCover / IA_LeaveCover
+	{
+		if (WasInputKeyJustPressed(EKeys::C))
+		{
+			for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
+			{
+				It->TryEnterCover();
+			}
+		}
+
+		if (WasInputKeyJustPressed(EKeys::V))
+		{
+			for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
+			{
+				It->SetInCover(false);
+			}
+		}	
+	}
+	
 	//
 	// Hover
 	//

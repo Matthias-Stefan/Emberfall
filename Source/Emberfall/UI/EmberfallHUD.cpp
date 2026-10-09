@@ -1,7 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/UI/EmberfallHUD.h"
-#include "Emberfall/EmberfallLog.h"
+#include "Emberfall/Core/EmberfallLog.h"
 #include "Emberfall/PlayerController/EmberfallPlayerController.h"
 #include "Emberfall/PlayerController/Selection/SelectionComponent.h"
 #include "Emberfall/PlayerController/Selection/SelectionDragState.h"

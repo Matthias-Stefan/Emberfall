@@ -1,8 +1,8 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/PlayerController/Selection/SelectionComponent.h"
-#include "Emberfall/Characters/Player/PlayerUnit.h"
-#include "Emberfall/EmberfallLog.h"
+#include "Emberfall/Core/EmberfallLog.h"
+#include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
 
 #include "EngineUtils.h"
 
