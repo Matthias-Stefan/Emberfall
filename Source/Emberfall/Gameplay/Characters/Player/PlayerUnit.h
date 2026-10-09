@@ -24,6 +24,12 @@ class EMBERFALL_API APlayerUnit : public ACharacter
 public:
     APlayerUnit();
 
+    /**
+     * @brief Orders the unit to a world location; in cover the target is projected onto the cover line and the navmesh is skipped.
+     * @param Target Requested world location.
+     */
+    void MoveToTarget(const FVector& Target);
+    
     //~=============================================================================
     // Selection
 

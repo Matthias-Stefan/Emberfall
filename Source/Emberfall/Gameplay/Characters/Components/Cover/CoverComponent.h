@@ -87,10 +87,14 @@ protected:
     /** @brief Reach of the cover trace in cm, measured from the unit center along its forward vector. */
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "1", Units = "cm"))
     float CoverTraceDistance{150.0f};
-
+    
     /** @brief Duration in seconds of the slide onto the cover line. */
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0.01", Units = "s"))
     float DockDuration{0.25f};
+    
+    /** @brief Distance in cm the mesh is shifted towards the wall while in cover. */
+    UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0", Units = "cm"))
+    float CoverMeshOffset{ 14.0f };
 
 private:
     /** @brief Spline of the cover the unit is docked to. */

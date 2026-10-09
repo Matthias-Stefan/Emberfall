@@ -36,6 +36,12 @@ void UCoverComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
         Actor->SetActorLocation(FMath::Lerp(DockData.StartLocation, DockData.TargetLocation, Eased));
         Actor->SetActorRotation(FQuat::Slerp(DockData.StartRotation, DockData.TargetRotation, Eased));
 
+        if (const ACharacter* OwnerCharacter = Cast<ACharacter>(Actor))
+        {
+            const FVector Shift = FVector::ForwardVector * CoverMeshOffset * Eased;
+            OwnerCharacter->GetMesh()->SetRelativeLocation(DockData.MeshStartLocation + Shift);
+        }
+        
         if (DockData.Alpha >= 1.0f)
         {
             CoverState = ECoverState::InCover;
@@ -82,13 +88,13 @@ bool UCoverComponent::TryEnterCover()
         return false;
     }
 
-    ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+    const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
     if (OwnerCharacter == nullptr)
     {
         UE_LOG(LogEmberfall, Error, TEXT("%s: Owner is not an ACharacter."), *GetNameSafe(this));
         return false;
     }
-
+    
     //
     // Trace
     //
@@ -97,7 +103,7 @@ bool UCoverComponent::TryEnterCover()
     const FVector End = Start + OwnerCharacter->GetActorForwardVector() * CoverTraceDistance;
 
     FHitResult Hit{};
-    FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(CoverTrace), false, OwnerCharacter);
+    const FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(CoverTrace), false, OwnerCharacter);
     if (!GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_COVER, TraceParams))
     {
         return false;
@@ -114,7 +120,7 @@ bool UCoverComponent::TryEnterCover()
     {
         return false;
     }
-
+    
     //
     // Dock target
     //
@@ -130,7 +136,8 @@ bool UCoverComponent::TryEnterCover()
     DockData.StartRotation = OwnerCharacter->GetActorQuat();
     DockData.TargetRotation = FRotator(0.f, (-CoverNormal).Rotation().Yaw, 0.f).Quaternion();
     DockData.Alpha = 0.f;
-
+    DockData.MeshStartLocation = OwnerCharacter->GetMesh()->GetRelativeLocation();
+    
     //
     // Start docking
     //
@@ -160,6 +167,7 @@ void UCoverComponent::LeaveCover()
     if (const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
     {
         OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
+        OwnerCharacter->GetMesh()->SetRelativeLocation(DockData.MeshStartLocation);
     }
 
     Spline.Reset();

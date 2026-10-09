@@ -201,7 +201,7 @@ void AEmberfallPlayerController::OnAddToSelectionCompleted([[maybe_unused]] cons
 
 void AEmberfallPlayerController::OnCommandStarted([[maybe_unused]] const FInputActionValue& Value)
 {
-    const TArray<TObjectPtr<APlayerUnit>> SelectedUnits = SelectionComponent->GetSelectedUnits();
+    const TArray<TObjectPtr<APlayerUnit>>& SelectedUnits = SelectionComponent->GetSelectedUnits();
     if (SelectedUnits.IsEmpty())
     {
         return;
@@ -213,21 +213,12 @@ void AEmberfallPlayerController::OnCommandStarted([[maybe_unused]] const FInputA
         return;
     }
 
-    for (auto& Unit : SelectedUnits)
+    for (APlayerUnit* Unit : SelectedUnits)
     {
-        if (!IsValid(Unit))
+        if (IsValid(Unit))
         {
-            continue;
+            Unit->MoveToTarget(Hit.Location);
         }
-
-        APlayerUnitAIController* UnitController = Cast<APlayerUnitAIController>(Unit->GetController());
-        if (UnitController == nullptr)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("%s has no APlayerUnitAIController"), *GetNameSafe(Unit));
-            continue;
-        }
-
-        UnitController->MoveToLocation(Hit.Location, -1.f, true, true, true);
     }
 }
 
