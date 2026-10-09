@@ -5,6 +5,5 @@
 
 APlayerUnitAIController::APlayerUnitAIController()
 {
-	PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = false;
 }
-
