@@ -50,6 +50,13 @@ public:
     void LeaveCover();
 
     /**
+     * @brief Returns the owner's speed along the cover line.
+     * @return Positive when moving to the unit's right, negative to the left, @c 0 outside of @c ECoverState::InCover.
+     */
+    UFUNCTION(BlueprintPure, Category = "Cover")
+    float GetSignedCoverSpeed() const;
+    
+    /**
      * @brief Returns the dock normal of the current cover.
      * @return World-space normal pointing away from the wall, or @c FVector::ZeroVector if not in cover.
      */
@@ -83,10 +90,21 @@ public:
      */
     const FCoverDockData& GetDockData() const { return DockData; }
 
+    /**
+     * @brief Returns whether the last movement along the cover line went to the unit's right.
+     * @return @c true if the last movement was to the right, @c false for left (also the default).
+     */
+    UFUNCTION(BlueprintPure, Category = "Cover")
+    bool IsLastMoveRight() const { return bLastMoveRight; }
+    
 protected:
     /** @brief Reach of the cover trace in cm, measured from the unit center along its forward vector. */
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "1", Units = "cm"))
     float CoverTraceDistance{150.0f};
+    
+    /** @brief Max walk speed while in cover. */
+    UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0", Units = "cm/s"))
+    float CoverMoveSpeed{ 120.0f };
     
     /** @brief Duration in seconds of the slide onto the cover line. */
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0.01", Units = "s"))
@@ -96,6 +114,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0", Units = "cm"))
     float CoverMeshOffset{ 14.0f };
 
+    /** @brief Speed in cm/s along the cover line above which a direction change is registered. */
+    UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0", Units = "cm/s"))
+    float MirrorSpeedThreshold{ 5.0f };
+    
 private:
     /** @brief Spline of the cover the unit is docked to. */
     TWeakObjectPtr<USplineComponent> Spline{};
@@ -107,5 +129,11 @@ private:
     ECoverState CoverState{ECoverState::None};
 
     /** @brief Runtime data of the current dock slide. */
-    FCoverDockData DockData;
+    FCoverDockData DockData{};
+    
+    /** @brief @c MaxWalkSpeed of the owner before entering cover, restored by @c LeaveCover. */
+    float DefaultMaxWalkSpeed{ 0.0f };
+    
+    /** @brief Direction of the last movement along the line; stays unchanged while standing still. */
+    bool bLastMoveRight{ false };
 };

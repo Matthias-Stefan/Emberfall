@@ -45,7 +45,14 @@ void UCoverComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
         if (DockData.Alpha >= 1.0f)
         {
             CoverState = ECoverState::InCover;
-            SetComponentTickEnabled(false);
+        }
+    }
+    else if (IsInCover())
+    {
+        const float Speed = GetSignedCoverSpeed();
+        if (FMath::Abs(Speed) > MirrorSpeedThreshold)
+        {
+            bLastMoveRight = Speed > 0.0f;
         }
     }
 }
@@ -146,11 +153,18 @@ bool UCoverComponent::TryEnterCover()
     {
         OwnController->StopMovement();
     }
-
-    OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
-
     CoverState = ECoverState::Docking;
     SetComponentTickEnabled(true);
+    
+    //
+    // Movement
+    //
+    
+    UCharacterMovementComponent* Movement = OwnerCharacter->GetCharacterMovement();
+    Movement->bOrientRotationToMovement = false;
+    DefaultMaxWalkSpeed = Movement->MaxWalkSpeed;
+    Movement->MaxWalkSpeed = CoverMoveSpeed;
+
     return true;
 }
 
@@ -166,12 +180,31 @@ void UCoverComponent::LeaveCover()
 
     if (const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
     {
-        OwnerCharacter->GetCharacterMovement()->bOrientRotationToMovement = true;
+        UCharacterMovementComponent* Movement = OwnerCharacter->GetCharacterMovement();
+        Movement->bOrientRotationToMovement = true;
+        Movement->MaxWalkSpeed = DefaultMaxWalkSpeed;
         OwnerCharacter->GetMesh()->SetRelativeLocation(DockData.MeshStartLocation);
     }
 
     Spline.Reset();
     CoverNormal = FVector::ZeroVector;
     DockData = FCoverDockData{};
+    bLastMoveRight = false;
     CoverState = ECoverState::None;
+}
+
+float UCoverComponent::GetSignedCoverSpeed() const
+{
+    if (!IsInCover())
+    {
+        return 0.0f;
+    }
+
+    const AActor* OwnerActor = GetOwner();
+    if (OwnerActor == nullptr)
+    {
+        return 0.0f;
+    }
+
+    return FVector::DotProduct(OwnerActor->GetVelocity(), OwnerActor->GetActorRightVector());
 }
