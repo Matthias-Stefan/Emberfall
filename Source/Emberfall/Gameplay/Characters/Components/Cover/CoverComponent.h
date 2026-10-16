@@ -118,6 +118,18 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Cover", meta = (ClampMin = "0", Units = "cm/s"))
     float MirrorSpeedThreshold{ 5.0f };
     
+    /** @brief Distance in cm kept free at both ends of a cover path; a negative value uses the capsule radius of the owner. */
+    UPROPERTY(EditAnywhere, Category = "Cover", meta = (Units = "cm"))
+    float EndMargin{ -1.0f };
+
+private:
+    /**
+     * @brief Keeps a distance on the path away from both ends by @c EndMargin.
+     * @param Distance Distance in cm along the path.
+     * @return @c Distance clamped to @c EndMargin .. @c Length - @c EndMargin, or the path center if the path is shorter than twice the margin.
+     */
+    float ClampToPathMargins(float Distance) const;
+    
 private:
     /** @brief Path of connected cover walls the unit is docked to; owned by the subsystem. */
     TWeakObjectPtr<UCoverPath> CoverPath{};

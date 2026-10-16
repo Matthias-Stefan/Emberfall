@@ -6,7 +6,7 @@
 #include "Emberfall/Gameplay/World/Cover/CoverPath.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
-#include "Components/SplineComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -76,10 +76,15 @@ FVector UCoverComponent::ConstrainToCover(const FVector& Target) const
                 return Target;
             }
 
-            const float Distance = CoverPath->FindDistanceClosestTo(Target);
-
+            const float Distance = ClampToPathMargins(CoverPath->FindDistanceClosestTo(Target));
             FVector OnLine = CoverPath->GetLocationAtDistance(Distance);
-            OnLine.Z = Target.Z;
+            
+            const AActor* OwnerActor = GetOwner();
+            if (OwnerActor != nullptr)
+            {
+                OnLine.Z = OwnerActor->GetActorLocation().Z;
+            }
+            
             return OnLine;
         }
 
@@ -146,7 +151,7 @@ bool UCoverComponent::TryEnterCover()
     
     CoverNormal = Cover->GetDockNormal().GetSafeNormal2D();
     
-    const float DistanceOnPath = CoverPath->FindDistanceClosestTo(Start);
+    const float DistanceOnPath = ClampToPathMargins(CoverPath->FindDistanceClosestTo(Start));
     FVector Target = CoverPath->GetLocationAtDistance(DistanceOnPath);
     Target.Z = Start.Z;
 
@@ -219,4 +224,27 @@ float UCoverComponent::GetSignedCoverSpeed() const
     }
 
     return FVector::DotProduct(OwnerActor->GetVelocity(), OwnerActor->GetActorRightVector());
+}
+
+float UCoverComponent::ClampToPathMargins(float Distance) const
+{
+    if (!CoverPath.IsValid())
+    {
+        return Distance;
+    }
+    
+    float Margin = EndMargin;
+    if (Margin < 0.0f)
+    {
+        const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+        Margin = OwnerCharacter != nullptr ? OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius() : 0.0f;
+    }
+    
+    const float Length = CoverPath->GetLength();
+    if (Length <= Margin * 2.0f)
+    {
+        return Length * 0.5f;
+    }
+
+    return FMath::Clamp(Distance, Margin, Length - Margin);
 }

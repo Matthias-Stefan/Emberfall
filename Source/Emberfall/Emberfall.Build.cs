@@ -7,24 +7,24 @@ public class Emberfall : ModuleRules
 	public Emberfall(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
+
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
-			"Core", 
-			"CoreUObject", 
-			"Engine", 
-			"InputCore", 
-			"EnhancedInput", 
-			"DeveloperSettings", 
-			"AIModule", 
-			"NavigationSystem", 
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"EnhancedInput",
+			"DeveloperSettings",
+			"AIModule",
+			"NavigationSystem",
 			"GameplayTasks"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "WaveTable", "WaveTable", "WaveTable" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "WaveTable" });
 
 		OptimizeCode = CodeOptimization.InShippingBuildsOnly;
-		
+
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 
