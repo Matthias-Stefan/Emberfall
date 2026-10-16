@@ -8,7 +8,7 @@
 #include "Components/ActorComponent.h"
 #include "CoverComponent.generated.h"
 
-class USplineComponent;
+class UCoverPath;
 
 
 /** @brief Tracks the cover a unit is docked to. */
@@ -119,8 +119,8 @@ protected:
     float MirrorSpeedThreshold{ 5.0f };
     
 private:
-    /** @brief Spline of the cover the unit is docked to. */
-    TWeakObjectPtr<USplineComponent> Spline{};
+    /** @brief Path of connected cover walls the unit is docked to; owned by the subsystem. */
+    TWeakObjectPtr<UCoverPath> CoverPath{};
 
     /** @brief Dock normal of the current cover, points away from the wall. */
     FVector CoverNormal{FVector::ZeroVector};

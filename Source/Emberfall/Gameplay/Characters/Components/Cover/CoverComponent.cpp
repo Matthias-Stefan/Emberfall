@@ -1,9 +1,10 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
-
 #include "Emberfall/Gameplay/Characters/Components/Cover/CoverComponent.h"
 #include "Emberfall/Core/EmberfallLog.h"
-#include "Emberfall/Gameplay/World/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverPath.h"
+#include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
 #include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
@@ -70,12 +71,14 @@ FVector UCoverComponent::ConstrainToCover(const FVector& Target) const
 
         case ECoverState::InCover:
         {
-            if (!Spline.IsValid())
+            if (!CoverPath.IsValid())
             {
                 return Target;
             }
 
-            FVector OnLine = Spline->FindLocationClosestToWorldLocation(Target, ESplineCoordinateSpace::World);
+            const float Distance = CoverPath->FindDistanceClosestTo(Target);
+
+            FVector OnLine = CoverPath->GetLocationAtDistance(Distance);
             OnLine.Z = Target.Z;
             return OnLine;
         }
@@ -116,26 +119,35 @@ bool UCoverComponent::TryEnterCover()
         return false;
     }
 
-    const ACoverObject* Cover = Cast<ACoverObject>(Hit.GetActor());
+    ACoverObject* Cover = Cast<ACoverObject>(Hit.GetActor());
     if (Cover == nullptr || !Cover->CanDockFromNormal(Hit.ImpactNormal))
     {
         return false;
     }
-
-    USplineComponent* CoverLine = Cover->GetCoverLine();
-    if (CoverLine == nullptr)
+    
+    UCoverSubsystem* CoverSubsystem = GetWorld()->GetSubsystem<UCoverSubsystem>();
+    if (CoverSubsystem == nullptr)
     {
+        UE_LOG(LogEmberfall, Error, TEXT("%s: Unable to access the cover subsystem."), *GetNameSafe(this));
         return false;
     }
+    
+    const TWeakObjectPtr<UCoverPath> Path = CoverSubsystem->GetCoverPath(*Cover);
+    if (!Path.IsValid())
+    {
+        UE_LOG(LogEmberfall, Warning, TEXT("%s: no cover path for %s."), *GetNameSafe(this), *GetNameSafe(Cover));
+        return false;
+    }
+    CoverPath = Path;
     
     //
     // Dock target
     //
-
-    Spline = CoverLine;
+    
     CoverNormal = Cover->GetDockNormal().GetSafeNormal2D();
-
-    FVector Target = CoverLine->FindLocationClosestToWorldLocation(Start, ESplineCoordinateSpace::World);
+    
+    const float DistanceOnPath = CoverPath->FindDistanceClosestTo(Start);
+    FVector Target = CoverPath->GetLocationAtDistance(DistanceOnPath);
     Target.Z = Start.Z;
 
     DockData.StartLocation = Start;
@@ -186,7 +198,7 @@ void UCoverComponent::LeaveCover()
         OwnerCharacter->GetMesh()->SetRelativeLocation(DockData.MeshStartLocation);
     }
 
-    Spline.Reset();
+    CoverPath.Reset();
     CoverNormal = FVector::ZeroVector;
     DockData = FCoverDockData{};
     bLastMoveRight = false;
