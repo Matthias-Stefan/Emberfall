@@ -30,11 +30,13 @@ class HtPillarPoint:
         x: Grid point X in cells, relative to the house origin.
         y: Grid point Y in cells, relative to the house origin.
         kind: Corner type of the point.
+        annex_only: True if every cell around the point belongs to an annex.
     """
 
     x: int
     y: int
     kind: HtPillarKind
+    annex_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -51,4 +53,23 @@ class HtEdge:
     x: int
     y: int
     axis: HtEdgeAxis
+    kind: HtRectKind
+
+
+@dataclass(frozen=True)
+class HtWallRun:
+    """Closed run of outer edges between two corner pillars.
+
+    Attributes:
+        axis: Direction the run goes along.
+        constant: Grid line coordinate that stays fixed (y for X runs, x for Y runs).
+        start: First grid coordinate along the axis, in cells.
+        length_cells: Number of unit edges in the run.
+        kind: MAIN or ANNEX, taken from the first edge of the run.
+    """
+
+    axis: HtEdgeAxis
+    constant: int
+    start: int
+    length_cells: int
     kind: HtRectKind

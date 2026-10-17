@@ -12,6 +12,29 @@ from halftimbered.datatypes import (
     HtWingParams,
 )
 
+WING_SOUTH_CHANCE: float = 0.5
+
+
+def _cell_range(min_m: float, max_m: float, grid: float, label: str, caller: str) -> tuple[int, int] | None:
+    """Converts a size range in meters to a whole cell range.
+
+    Args:
+        min_m: Minimum size in meters, rounded up to whole cells.
+        max_m: Maximum size in meters, rounded down to whole cells.
+        grid: Cell size in meters.
+        label: Name of the dimension for the warning, e.g. "width".
+        caller: Name of the calling function for the warning.
+
+    Returns:
+        (min_cells, max_cells), or None (with a warning) if no whole cell count fits.
+    """
+    min_cells: int = math.ceil(min_m / grid)
+    max_cells: int = math.floor(max_m / grid)
+    if min_cells < 1 or min_cells > max_cells:
+        print(f"{caller}: no module count fits {label} {min_m}-{max_m} m")
+        return None
+    return min_cells, max_cells
+
 
 def ht_is_annex_candidate(rect: HtRect, house_params: HtHouseParams) -> bool:
     """Checks whether a rect is small enough to become an annex.
@@ -49,6 +72,7 @@ def ht_roll_base_rect(house_params: HtHouseParams, rng: random.Random) -> HtRect
 
     Args:
         house_params: Provides grid and base limits; min is rounded up, max is rounded down.
+        rng: Random source of the house.
 
     Returns:
         The base rect at cell (0, 0), or None if no whole module count fits the limits.
@@ -56,20 +80,19 @@ def ht_roll_base_rect(house_params: HtHouseParams, rng: random.Random) -> HtRect
     base: HtBaseParams = house_params.base
     grid: float = house_params.grid
 
-    min_width_cells: int = math.ceil(base.min_width / grid)
-    max_width_cells: int = math.floor(base.max_width / grid)
-    min_depth_cells: int = math.ceil(base.min_depth / grid)
-    max_depth_cells: int = math.floor(base.max_depth / grid)
-
-    if min_width_cells < 1 or min_width_cells > max_width_cells:
-        print(f"ht_roll_base_rect: no module count fits width {base.min_width}-{base.max_width} m")
+    # Width is checked first so the warning order stays the same as before
+    width_range: tuple[int, int] | None = _cell_range(
+        base.min_width, base.max_width, grid, "width", "ht_roll_base_rect")
+    if width_range is None:
         return None
-    if min_depth_cells < 1 or min_depth_cells > max_depth_cells:
-        print(f"ht_roll_base_rect: no module count fits depth {base.min_depth}-{base.max_depth} m")
+    depth_range: tuple[int, int] | None = _cell_range(
+        base.min_depth, base.max_depth, grid, "depth", "ht_roll_base_rect")
+    if depth_range is None:
         return None
 
-    depth_cells: int = rng.randint(min_depth_cells, max_depth_cells)
-    width_cells: int = rng.randint(min_width_cells, max_width_cells)
+    # Depth is rolled before width, do not swap (seeds)
+    depth_cells: int = rng.randint(depth_range[0], depth_range[1])
+    width_cells: int = rng.randint(width_range[0], width_range[1])
 
     base_rect: HtRect = HtRect(0, 0, width_cells, depth_cells)
     return base_rect
@@ -81,6 +104,7 @@ def ht_roll_wing(base_rect: HtRect, house_params: HtHouseParams, rng: random.Ran
     Args:
         base_rect: Rect the wing is attached to.
         house_params: Provides grid and the wing limits in meters.
+        rng: Random source of the house.
 
     Returns:
         The wing candidate, not yet checked for collisions, or None if no whole
@@ -89,24 +113,22 @@ def ht_roll_wing(base_rect: HtRect, house_params: HtHouseParams, rng: random.Ran
     wings: HtWingParams = house_params.wings
     grid: float = house_params.grid
 
-    min_depth_cells: int = math.ceil(wings.min_wing_depth / grid)
-    max_depth_cells: int = math.floor(wings.max_wing_depth / grid)
-    min_width_cells: int = math.ceil(wings.min_wing_width / grid)
-    max_width_cells: int = math.floor(wings.max_wing_width / grid)
-
-    if min_depth_cells < 1 or min_depth_cells > max_depth_cells:
-        print(f"ht_roll_wing: no module count fits depth {wings.min_wing_depth}-{wings.max_wing_depth} m")
+    depth_range: tuple[int, int] | None = _cell_range(
+        wings.min_wing_depth, wings.max_wing_depth, grid, "depth", "ht_roll_wing")
+    if depth_range is None:
         return None
-    if min_width_cells < 1 or min_width_cells > max_width_cells:
-        print(f"ht_roll_wing: no module count fits width {wings.min_wing_width}-{wings.max_wing_width} m")
+    width_range: tuple[int, int] | None = _cell_range(
+        wings.min_wing_width, wings.max_wing_width, grid, "width", "ht_roll_wing")
+    if width_range is None:
         return None
 
-    depth_cells: int = rng.randint(min_depth_cells, max_depth_cells)
-    width_cells: int = rng.randint(min_width_cells, max_width_cells)
+    # Depth is rolled before width, do not swap (seeds)
+    depth_cells: int = rng.randint(depth_range[0], depth_range[1])
+    width_cells: int = rng.randint(width_range[0], width_range[1])
 
     # Coin flip: north edge or south edge of the base
     wing_y: int = base_rect.y + base_rect.depth
-    if rng.random() < 0.5:
+    if rng.random() < WING_SOUTH_CHANCE:
         wing_y = base_rect.y - depth_cells
 
     # Start range guarantees at least 1 cell of contact with the base edge
@@ -123,7 +145,8 @@ def ht_roll_wings(base_rect: HtRect, house_params: HtHouseParams, rng: random.Ra
 
     Args:
         base_rect: Main rect of the house.
-        house_params: Provides max_wings and max_attempts.
+        house_params: Provides max_wings, max_attempts and the annex rules.
+        rng: Random source of the house.
 
     Returns:
         The wings that found a free spot.
@@ -141,6 +164,7 @@ def ht_roll_wings(base_rect: HtRect, house_params: HtHouseParams, rng: random.Ra
             if any(ht_rects_overlap(candidate, rect) for rect in all_rects):
                 continue
 
+            # Short-circuit matters: rng.random() is only rolled for annex candidates
             if ht_is_annex_candidate(candidate, house_params) and rng.random() < house_params.annex.annex_chance:
                 candidate.kind = HtRectKind.ANNEX
 

@@ -1,5 +1,8 @@
 ﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
 
+from enum import Enum
+from typing import TypeVar
+
 import bmesh
 import bpy
 
@@ -10,6 +13,8 @@ from halftimbered.assets import (
     HtAssetMaterial,
     ht_parse_enum,
 )
+
+E = TypeVar("E", bound=Enum)
 
 
 def ht_remove_house(house_name: str) -> None:
@@ -149,6 +154,28 @@ def _parse_size_and_variant(name: str) -> tuple[int, int, int, int] | None:
     return length_cm, height_cm, depth_cm, variant
 
 
+def _pick_enum(enum_type: type[E], tokens: list[str], obj_name: str) -> E | None:
+    """Finds the single token that belongs to the given enum.
+
+    Args:
+        enum_type: Category enum to look for.
+        tokens: Tags of the asset.
+        obj_name: Object name for the warning.
+
+    Returns:
+        The member, or None (with a warning) if no or several tokens fit.
+    """
+    matches: list[E] = []
+    for token in tokens:
+        member: E | None = ht_parse_enum(enum_type, token)
+        if member is not None:
+            matches.append(member)
+    if len(matches) != 1:
+        print(f"_pick_enum: '{obj_name}' has {len(matches)} {enum_type.__name__} tags in {tokens}")
+        return None
+    return matches[0]
+
+
 def ht_discover_assets(collection_name: str) -> list[HtAssetDef]:
     """Builds asset definitions from the objects of a catalog collection.
 
@@ -169,23 +196,15 @@ def ht_discover_assets(collection_name: str) -> list[HtAssetDef]:
         if not obj.name.startswith("SM_ht_"):
             continue
 
-        kind_raw: str | None = _read_str_prop(obj, "ht_kind")
-        material_raw: str | None = _read_str_prop(obj, "ht_material")
-        layer_raw: str | None = _read_str_prop(obj, "ht_layer")
-        if kind_raw is None or material_raw is None or layer_raw is None:
+        tags_raw: str | None = _read_str_prop(obj, "ht_tags")
+        if tags_raw is None:
             continue
+        tokens: list[str] = [token.strip() for token in tags_raw.split(",") if token.strip()]
 
-        kind: HtAssetKind | None = ht_parse_enum(HtAssetKind, kind_raw)
-        if kind is None:
-            print(f"ht_discover_assets: unknown kind '{kind_raw}' on '{obj.name}'")
-            continue
-        material: HtAssetMaterial | None = ht_parse_enum(HtAssetMaterial, material_raw)
-        if material is None:
-            print(f"ht_discover_assets: unknown material '{material_raw}' on '{obj.name}'")
-            continue
-        layer: HtAssetLayer | None = ht_parse_enum(HtAssetLayer, layer_raw)
-        if layer is None:
-            print(f"ht_discover_assets: unknown layer '{layer_raw}' on '{obj.name}'")
+        kind: HtAssetKind | None = _pick_enum(HtAssetKind, tokens, obj.name)
+        material: HtAssetMaterial | None = _pick_enum(HtAssetMaterial, tokens, obj.name)
+        layer: HtAssetLayer | None = _pick_enum(HtAssetLayer, tokens, obj.name)
+        if kind is None or material is None or layer is None:
             continue
 
         parsed: tuple[int, int, int, int] | None = _parse_size_and_variant(obj.name)
