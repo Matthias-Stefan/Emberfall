@@ -35,12 +35,16 @@
 *.xcodeproj
 *.xcworkspace
 *.sln
+*.slnx
 *.suo
 *.opensdf
 *.sdf
 *.VC.db
 *.VC.opendb
 .vsconfig
+
+# Automation project file, which Rider generates
+Automation_*.slnx
 
 # Precompiled Assets
 SourceArt/**/*.png
@@ -74,11 +78,21 @@ Plugins/**/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
-# Rider / JetBrains
+# Rider / JetBrains / VS Code
 .idea/
+.vscode/
+*.DotSettings.user
 
-# Newer solution format (UE 5.x)
-*.slnx
+# Source art is not tracked, except Python tooling
+/Art/**
+!/Art/**/
+!/Art/**/*.py
 
-# Automation project file, which Rider generates
-Automation_*.slnx
+# Python junk (must stay below the Art exceptions)
+__pycache__/
+*.pyc
+.venv/
+
+# Blender backups
+*.blend1
+*.blend2
