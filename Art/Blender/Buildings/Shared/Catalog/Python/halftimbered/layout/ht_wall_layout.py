@@ -12,10 +12,7 @@ from halftimbered.datatypes import (
     HtRectKind,
     HtWallRun,
 )
-
-WALL_FIRST_LENGTH_CM: int = 160
-WALL_LENGTH_CM: int = 200
-HALF_POST_M: float = 0.2
+from halftimbered.ht_globals import WALL_FIRST_LENGTH_CM, HALF_POST_M, WALL_LENGTH_CM
 
 
 def _edge_start(edge: HtEdge) -> int:

@@ -20,11 +20,8 @@ from halftimbered.datatypes import (
 from halftimbered.ht_blender_utils import ht_discover_assets, ht_remove_house
 from halftimbered.ht_footprint_roll import ht_roll_base_rect, ht_roll_wings
 from halftimbered.ht_footprint_analysis import ht_find_outer_edges, ht_find_pillar_points
+from halftimbered.ht_globals import CATALOG_COLLECTION, ANNEX_HEIGHT_CM, MAIN_HEIGHT_CM
 from halftimbered.layout import ht_find_wall_runs, ht_plan_pillars, ht_plan_walls
-
-CATALOG_COLLECTION: str = "HalfTimberedCollection"
-MAIN_HEIGHT_CM: int = 260
-ANNEX_HEIGHT_CM: int = 220
 
 
 def _create_collection(house_name: str) -> bpy.types.Collection:

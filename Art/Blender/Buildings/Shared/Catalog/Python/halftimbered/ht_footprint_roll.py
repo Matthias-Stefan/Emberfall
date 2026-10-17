@@ -11,8 +11,7 @@ from halftimbered.datatypes import (
     HtRectKind,
     HtWingParams,
 )
-
-WING_SOUTH_CHANCE: float = 0.5
+from halftimbered.ht_globals import WING_SOUTH_CHANCE
 
 
 def _cell_range(min_m: float, max_m: float, grid: float, label: str, caller: str) -> tuple[int, int] | None:
