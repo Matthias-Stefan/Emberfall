@@ -3,110 +3,34 @@
 import math
 import random
 
-import bmesh
 import bpy
 
+from halftimbered.ht_blender_utils import (
+    ht_create_box,
+    ht_get_debug_material,
+    ht_instance_asset,
+    ht_remove_house,
+)
 from halftimbered.datatypes import (
+    HtEdge,
+    HtEdgeAxis,
     HtGroundLayerParams,
     HtGroundType,
     HtHouseParams,
+    HtPillarKind,
+    HtPillarPoint,
     HtRect,
     HtRectKind,
-    HtPillarPoint, HtPillarKind, HtEdgeAxis, HtEdge,
 )
-from halftimbered.footprint import ht_roll_base_rect, ht_roll_wings
-from halftimbered.footprint_edges import ht_find_pillar_points, ht_point_touches_kind, ht_find_outer_edges
-
-
-def ht_remove_house(house_name: str) -> None:
-    """Deletes the house collection with all its objects and meshes.
-
-    Args:
-        house_name: Name of the collection to delete.
-    """
-    collection: bpy.types.Collection | None = bpy.data.collections.get(house_name)
-    if collection is None:
-        return None
-
-    for obj in list(collection.objects):
-        mesh: bpy.types.Mesh | None = obj.data
-        bpy.data.objects.remove(obj)
-        if mesh is not None and mesh.users == 0:
-            bpy.data.meshes.remove(mesh)
-
-    bpy.data.collections.remove(collection)
-    return None
-
-
-def ht_create_box(name: str, size_x: float, size_y: float, size_z: float,
-                  collection: bpy.types.Collection) -> bpy.types.Object:
-    """Creates a box with its origin at the bottom corner (min X, min Y, Z = 0).
-
-    Args:
-        name: Object and mesh name.
-        size_x: Size along X in meters.
-        size_y: Size along Y in meters.
-        size_z: Size along Z in meters.
-        collection: Collection the object is linked to.
-
-    Returns:
-        The created object.
-    """
-    mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
-    bm: bmesh.types.BMesh = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.scale(bm, vec=(size_x, size_y, size_z), verts=bm.verts)
-    bmesh.ops.translate(bm, vec=(size_x * 0.5, size_y * 0.5, size_z * 0.5), verts=bm.verts)
-    bm.to_mesh(mesh)
-    bm.free()
-
-    obj: bpy.types.Object = bpy.data.objects.new(name, mesh)
-    collection.objects.link(obj)
-    return obj
-
-
-def ht_get_debug_material(name: str, color: tuple[float, float, float, float]) -> bpy.types.Material:
-    """Returns the debug material of this name, created once; its colors are always refreshed.
-
-    Args:
-        name: Material name.
-        color: RGBA color.
-
-    Returns:
-        The material.
-    """
-    material: bpy.types.Material | None = bpy.data.materials.get(name)
-    if material is None:
-        material = bpy.data.materials.new(name)
-
-    material.diffuse_color = color
-    material.use_nodes = True
-    bsdf: bpy.types.Node | None = material.node_tree.nodes.get("Principled BSDF")
-    if bsdf is not None:
-        bsdf.inputs["Base Color"].default_value = color
-    return material
-
-
-def ht_instance_asset(asset_name: str, name: str,
-                      collection: bpy.types.Collection) -> bpy.types.Object | None:
-    """Creates an object that shares the mesh of a catalog asset.
-
-    Args:
-        asset_name: Name of the catalog object, e.g. SM_ht_post_stone_40x260x40_01.
-        name: Name of the new object.
-        collection: Collection the new object is linked to.
-
-    Returns:
-        The new object, or None if the asset does not exist.
-    """
-    source: bpy.types.Object | None = bpy.data.objects.get(asset_name)
-    if source is None:
-        print(f"ht_instance_asset: asset '{asset_name}' not found")
-        return None
-
-    obj: bpy.types.Object = bpy.data.objects.new(name, source.data)
-    collection.objects.link(obj)
-    return obj
+from halftimbered.ht_footprint import (
+    ht_roll_base_rect,
+    ht_roll_wings,
+)
+from halftimbered.ht_footprint_edges import (
+    ht_find_outer_edges,
+    ht_find_pillar_points,
+    ht_point_touches_kind,
+)
 
 
 def ht_build_foundation(house_params: HtHouseParams, rects: list[HtRect], ground_height: float,

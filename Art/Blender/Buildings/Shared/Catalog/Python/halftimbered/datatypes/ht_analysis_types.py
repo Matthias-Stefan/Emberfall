@@ -3,19 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-
-class HtGroundType(Enum):
-    """Kind of stone layer at the bottom of the house."""
-
-    PLINTH = 0
-    STONE_FLOOR = 1
-
-
-class HtRectKind(Enum):
-    """Role of a rect in the footprint."""
-
-    MAIN = 0
-    ANNEX = 1
+from halftimbered.datatypes.ht_footprint_types import HtRectKind
 
 
 class HtPillarKind(Enum):
@@ -34,26 +22,7 @@ class HtEdgeAxis(Enum):
     Y = 1  # runs along Y, sits on a grid line of constant x
 
 
-@dataclass
-class HtRect:
-    """Rectangle on the cell grid, relative to the house origin.
-
-    Attributes:
-        x: Minimum cell X, relative to the house origin.
-        y: Minimum cell Y, relative to the house origin.
-        width: Size in cells along X.
-        depth: Size in cells along Y.
-        kind: Role of the rect, MAIN unless a wing qualifies as annex.
-    """
-
-    x: int
-    y: int
-    width: int
-    depth: int
-    kind: HtRectKind = HtRectKind.MAIN
-
-
-@dataclass
+@dataclass(frozen=True)
 class HtPillarPoint:
     """Grid point that needs a pillar.
 
@@ -68,7 +37,7 @@ class HtPillarPoint:
     kind: HtPillarKind
 
 
-@dataclass
+@dataclass(frozen=True)
 class HtEdge:
     """Outer edge of a cell on the grid.
 

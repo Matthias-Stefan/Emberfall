@@ -15,7 +15,7 @@ for name in list(sys.modules):
     if name.startswith("halftimbered"):
         del sys.modules[name]
 
-from halftimbered import datatypes, house_builder
+from halftimbered import datatypes, ht_house_builder
 
 seed: int | None = None
 if datatypes.USE_TEST_SEEDS:
@@ -57,4 +57,4 @@ params: datatypes.HtHouseParams = datatypes.HtHouseParams(
         annex_chance=0.75,
     ),
 )
-house_builder.ht_build_house(params)
+ht_house_builder.ht_build_house(params)
