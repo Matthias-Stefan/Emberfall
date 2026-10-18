@@ -10,9 +10,14 @@ from halftimbered.datatypes import (
     HtPillarPoint,
     HtPlacement,
     HtRectKind,
-    HtWallRun,
+    HtWallRun, HtSide,
 )
-from halftimbered.ht_globals import WALL_FIRST_LENGTH_CM, HALF_POST_M, WALL_LENGTH_CM
+from halftimbered.ht_globals import (
+    WALL_FIRST_LENGTH_CM,
+    HALF_POST_M,
+    WALL_LENGTH_CM,
+    WALL_FRONT_IS_PLUS_Y
+)
 
 
 def _edge_start(edge: HtEdge) -> int:
@@ -39,14 +44,14 @@ def ht_find_wall_runs(edges: list[HtEdge], corner_points: list[HtPillarPoint]) -
     """
     pillar_cells: set[tuple[int, int]] = {(point.x, point.y) for point in corner_points}
 
-    # Group unit edges by line: (axis, constant coordinate) -> edges
-    lines: dict[tuple[HtEdgeAxis, int], list[HtEdge]] = {}
+    # Group unit edges by line: (axis, constant coordinate, outside side) -> edges
+    lines: dict[tuple[HtEdgeAxis, int, HtSide], list[HtEdge]] = {}
     for edge in edges:
         constant: int = edge.y if edge.axis == HtEdgeAxis.X else edge.x
-        lines.setdefault((edge.axis, constant), []).append(edge)
+        lines.setdefault((edge.axis, constant, edge.outside), []).append(edge)
 
     runs: list[HtWallRun] = []
-    for (axis, constant), line_edges in lines.items():
+    for (axis, constant, outside), line_edges in lines.items():
         line_edges.sort(key=_edge_start)
 
         current: list[HtEdge] = []
@@ -59,9 +64,30 @@ def ht_find_wall_runs(edges: list[HtEdge], corner_points: list[HtPillarPoint]) -
             if end_cell not in pillar_cells:
                 continue
 
-            runs.append(HtWallRun(axis, constant, _edge_start(current[0]), len(current), current[0].kind))
+            runs.append(HtWallRun(axis, constant, _edge_start(current[0]), len(current),
+                                  current[0].kind, outside))
             current = []
     return runs
+
+
+def _wall_rotation(axis: HtEdgeAxis, outside: HtSide) -> float:
+    """Returns the Z rotation that makes the stone side face outwards.
+
+    Args:
+        axis: Direction the run goes along.
+        outside: Side of the run where the outside lies.
+
+    Returns:
+        Rotation around Z in radians.
+    """
+    if axis == HtEdgeAxis.X:
+        angle: float = 0.0 if outside == HtSide.NEGATIVE else math.pi
+    else:
+        angle = -math.pi / 2 if outside == HtSide.NEGATIVE else math.pi / 2
+
+    if WALL_FRONT_IS_PLUS_Y:
+        angle += math.pi
+    return angle
 
 
 def ht_plan_walls(house_params: HtHouseParams, runs: list[HtWallRun], catalog: HtAssetCatalog,
@@ -84,6 +110,7 @@ def ht_plan_walls(house_params: HtHouseParams, runs: list[HtWallRun], catalog: H
     for run in runs:
         height_cm: int = annex_height_cm if run.kind == HtRectKind.ANNEX else main_height_cm
         lengths_cm: list[int] = [WALL_FIRST_LENGTH_CM] + [WALL_LENGTH_CM] * (run.length_cells - 1)
+        rotation_z: float = _wall_rotation(run.axis, run.outside)
 
         cursor: float = run.start * grid + HALF_POST_M
         for length_cm in lengths_cm:
@@ -94,8 +121,8 @@ def ht_plan_walls(house_params: HtHouseParams, runs: list[HtWallRun], catalog: H
             if asset is not None:
                 center: float = cursor + length_m * 0.5
                 if run.axis == HtEdgeAxis.X:
-                    placements.append(HtPlacement(asset, center, run.constant * grid))
+                    placements.append(HtPlacement(asset, center, run.constant * grid, rotation_z=rotation_z))
                 else:
-                    placements.append(HtPlacement(asset, run.constant * grid, center, rotation_z=math.pi / 2))
+                    placements.append(HtPlacement(asset, run.constant * grid, center, rotation_z=rotation_z))
             cursor += length_m
     return placements

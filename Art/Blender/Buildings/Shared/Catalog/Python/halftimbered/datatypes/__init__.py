@@ -5,6 +5,7 @@ from halftimbered.datatypes.ht_analysis_types import (
     HtEdgeAxis,
     HtPillarKind,
     HtPillarPoint,
+    HtSide,
     HtWallRun,
 )
 from halftimbered.datatypes.ht_footprint_types import (
@@ -38,6 +39,7 @@ __all__ = [
     "HtPlacement",
     "HtRect",
     "HtRectKind",
+    "HtSide",
     "HtTestSeed",
     "HtWallRun",
     "HtWingParams",

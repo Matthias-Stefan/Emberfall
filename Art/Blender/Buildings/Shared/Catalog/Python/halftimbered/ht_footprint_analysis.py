@@ -1,6 +1,6 @@
 ﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
 
-from halftimbered.datatypes import HtPillarKind, HtPillarPoint, HtRect, HtRectKind, HtEdge, HtEdgeAxis
+from halftimbered.datatypes import HtPillarKind, HtPillarPoint, HtRect, HtRectKind, HtEdge, HtEdgeAxis, HtSide
 
 
 def ht_kind_by_cell(rects: list[HtRect]) -> dict[tuple[int, int], HtRectKind]:
@@ -90,11 +90,11 @@ def ht_find_outer_edges(rects: list[HtRect]) -> list[HtEdge]:
     edges: list[HtEdge] = []
     for (x, y), kind in kind_by_cell.items():
         if (x, y - 1) not in kind_by_cell:
-            edges.append(HtEdge(x, y, HtEdgeAxis.X, kind))
+            edges.append(HtEdge(x, y, HtEdgeAxis.X, kind, HtSide.NEGATIVE))
         if (x, y + 1) not in kind_by_cell:
-            edges.append(HtEdge(x, y + 1, HtEdgeAxis.X, kind))
+            edges.append(HtEdge(x, y + 1, HtEdgeAxis.X, kind, HtSide.POSITIVE))
         if (x - 1, y) not in kind_by_cell:
-            edges.append(HtEdge(x, y, HtEdgeAxis.Y, kind))
+            edges.append(HtEdge(x, y, HtEdgeAxis.Y, kind, HtSide.NEGATIVE))
         if (x + 1, y) not in kind_by_cell:
-            edges.append(HtEdge(x + 1, y, HtEdgeAxis.Y, kind))
+            edges.append(HtEdge(x + 1, y, HtEdgeAxis.Y, kind, HtSide.POSITIVE))
     return edges

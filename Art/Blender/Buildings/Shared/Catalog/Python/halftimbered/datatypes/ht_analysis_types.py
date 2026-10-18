@@ -22,6 +22,13 @@ class HtEdgeAxis(Enum):
     Y = 1  # runs along Y, sits on a grid line of constant x
 
 
+class HtSide(Enum):
+    """Side of an edge where the outside (empty cell) lies."""
+
+    NEGATIVE = 0  # outside at smaller y (X edges) or smaller x (Y edges)
+    POSITIVE = 1  # outside at larger y (X edges) or larger x (Y edges)
+
+
 @dataclass(frozen=True)
 class HtPillarPoint:
     """Grid point that needs a pillar.
@@ -48,12 +55,14 @@ class HtEdge:
         y: Start grid point Y in cells.
         axis: Direction the edge runs along.
         kind: MAIN or ANNEX, taken from the cell that owns the edge.
+        outside: Side of the edge where the empty cell lies.
     """
 
     x: int
     y: int
     axis: HtEdgeAxis
     kind: HtRectKind
+    outside: HtSide
 
 
 @dataclass(frozen=True)
@@ -66,6 +75,7 @@ class HtWallRun:
         start: First grid coordinate along the axis, in cells.
         length_cells: Number of unit edges in the run.
         kind: MAIN or ANNEX, taken from the first edge of the run.
+        outside: Side of the run where the empty cell lies.
     """
 
     axis: HtEdgeAxis
@@ -73,3 +83,4 @@ class HtWallRun:
     start: int
     length_cells: int
     kind: HtRectKind
+    outside: HtSide

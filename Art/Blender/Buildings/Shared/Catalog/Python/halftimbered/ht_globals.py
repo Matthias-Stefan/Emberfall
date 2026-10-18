@@ -20,3 +20,7 @@ WALL_FIRST_LENGTH_CM: int = WALL_LENGTH_CM - POST_WIDTH_CM
 # Heights of main and annex: come from the asset catalog (available heights)
 MAIN_HEIGHT_CM: int = 260
 ANNEX_HEIGHT_CM: int = 220
+
+# Wall asset orientation: comes from the asset catalog (front direction per asset)
+# True if the stone side of the wall assets faces local +Y, False for local -Y
+WALL_FRONT_IS_PLUS_Y: bool = False

@@ -86,44 +86,61 @@ def ht_get_debug_material(name: str, color: tuple[float, float, float, float]) -
     return material
 
 
-def ht_instance_asset(asset_name: str, name: str,
-                      collection: bpy.types.Collection) -> bpy.types.Object | None:
-    """Creates an object that shares the mesh of a catalog asset.
+def _copy_hierarchy(source: bpy.types.Object, parent: bpy.types.Object | None,
+                    collection: bpy.types.Collection) -> bpy.types.Object:
+    """Copies an object and all its children, meshes stay shared.
 
     Args:
-        asset_name: Name of the catalog object, e.g. SM_ht_post_stone_40x260x40_01.
-        name: Name of the new object.
-        collection: Collection the new object is linked to.
+        source: Object to copy.
+        parent: Parent of the copy, None for the root.
+        collection: Collection the copies are linked to.
 
     Returns:
-        The new object, or None if the asset does not exist.
+        The copy of source.
+    """
+    copy: bpy.types.Object = source.copy()
+    collection.objects.link(copy)
+    if parent is not None:
+        copy.parent = parent
+        copy.matrix_parent_inverse = source.matrix_parent_inverse.copy()
+    for child in source.children:
+        _copy_hierarchy(child, copy, collection)
+    return copy
+
+
+def ht_instance_asset(asset_name: str, name: str,
+                      collection: bpy.types.Collection) -> bpy.types.Object | None:
+    """Creates a copy of a catalog asset; meshes are shared, modifiers are copied.
+
+    Args:
+        asset_name: Name of the catalog root object, e.g. SM_ht_wall_stone_200x260x30_01.
+        name: Name of the new root object.
+        collection: Collection the new objects are linked to.
+
+    Returns:
+        The new root object, or None if the asset does not exist.
     """
     source: bpy.types.Object | None = bpy.data.objects.get(asset_name)
     if source is None:
         print(f"ht_instance_asset: asset '{asset_name}' not found")
         return None
 
-    obj: bpy.types.Object = bpy.data.objects.new(name, source.data)
-    collection.objects.link(obj)
-    return obj
+    root: bpy.types.Object = _copy_hierarchy(source, None, collection)
+    root.name = name
+    return root
 
 
 def _read_str_prop(obj: bpy.types.Object, key: str) -> str | None:
-    """Reads a string custom property from the mesh of an object.
+    """Reads a string custom property from an object.
 
     Args:
-        obj: Catalog object whose mesh holds the property.
-        key: Property name, e.g. ht_kind.
+        obj: Asset root object holding the property.
+        key: Property name, e.g. ht_tags.
 
     Returns:
         The string, or None (with a warning) if it is missing or not a string.
     """
-    data: bpy.types.ID | None = obj.data
-    if data is None:
-        print(f"_read_str_prop: '{obj.name}' has no data")
-        return None
-
-    value: object = data.get(key)
+    value: object = obj.get(key)
     if value is None:
         print(f"_read_str_prop: '{obj.name}' has no property '{key}'")
         return None
