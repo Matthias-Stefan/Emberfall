@@ -8,9 +8,13 @@
 #include "GameFramework/Actor.h"
 #include "CoverObject.generated.h"
 
-struct FCoverRun;
+class ACoverObject;
 class USplineComponent;
+struct FCoverRun;
 
+
+/** @brief Fired after @c ActiveSides changed at runtime. */
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnCoverActiveSidesChanged, ACoverObject&);
 
 /**
  * @brief Anything a unit can take cover behind or lean against.
@@ -29,6 +33,26 @@ public:
      */
     virtual void OnConstruction(const FTransform& Transform) override;
 
+    /**
+     * @brief Draws the debug runs every frame.
+     * @param DeltaSeconds Seconds since the last frame.
+     */
+    virtual void Tick(float DeltaSeconds) override;
+
+    /**
+     * @brief Keeps the actor ticking in editor viewports so the debug lines update live.
+     * @return Always @c true.
+     */
+    virtual bool ShouldTickIfViewportsOnly() const override;
+    
+#if WITH_EDITOR
+    /**
+     * @brief Notifies listeners when @c ActiveSides was edited in the details panel.
+     * @param PropertyChangedEvent The property that was edited.
+     */
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+    
     /**
      * @brief Returns the height class of this cover.
      * @return @c ECoverHeight of the object.
@@ -50,10 +74,29 @@ public:
      */
     bool TryGetRunForNormal(const FVector& SurfaceNormal, FCoverRun& OutRun, int32& OutRunId) const;
 
+    /**
+     * @brief Sets the active sides and notifies listeners if the value changed.
+     * @param NewActiveSides Sides that offer cover, combined with @c | .
+     */
+    void SetActiveSides(ECoverSide NewActiveSides);
+
+    /**
+     * @brief Returns the sides that offer cover.
+     * @return Active sides as @c ECoverSide flags.
+     */
+    ECoverSide GetActiveSides() const { return static_cast<ECoverSide>(ActiveSides); }
+
+public:
+    /** @brief Fired by @c SetActiveSides; the cover subsystem uses it to drop cached paths. */
+    FOnCoverActiveSidesChanged OnActiveSidesChanged;
+    
 private:
     /** @brief Rebuilds @c OutlineLine as a closed rectangle around the mesh bounds. */
     void FitOutline();
-
+    
+    /** @brief Draws active edges green (closed run) or yellow (open run), blocked edges red, plus the edge normals. */
+    void DrawDebugRuns() const;
+    
 protected:
     /** @brief Visual mesh of the cover object, blocks the @c Cover trace channel. */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cover", meta = (AllowPrivateAccess = "true"))
@@ -75,7 +118,11 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Cover", meta = (Bitmask, BitmaskEnum = "/Script/Emberfall.ECoverSide"))
     int32 ActiveSides{ static_cast<int32>(ECoverSide::All) };
 
-    /** @brief Closed loop around the mesh; edge @c i runs from point @c i to point @c i + 1 (see @c ECoverSide order). */
+    /** @brief Closed loop around the mesh; the edge at index N runs from spline point N to point N + 1, in the order of @c ECoverSide. */
     UPROPERTY(VisibleAnywhere, Category = "Cover")
     TObjectPtr<USplineComponent> OutlineLine;
+    
+    /** @brief Draws the runs and their normals for debugging. */
+    UPROPERTY(EditAnywhere, Category = "Cover|Debug")
+    bool bDrawDebugRuns = true;
 };

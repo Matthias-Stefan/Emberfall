@@ -16,7 +16,7 @@ ACoverObject::ACoverObject()
     OutlineLine->SetupAttachment(Mesh);
     OutlineLine->SetClosedLoop(true, false);
 
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 }
 
 void ACoverObject::OnConstruction(const FTransform& Transform)
@@ -28,6 +28,29 @@ void ACoverObject::OnConstruction(const FTransform& Transform)
         FitOutline();
     }
 }
+
+void ACoverObject::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    DrawDebugRuns();
+}
+
+bool ACoverObject::ShouldTickIfViewportsOnly() const
+{
+    return true;
+}
+
+#if WITH_EDITOR
+void ACoverObject::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ACoverObject, ActiveSides))
+    {
+        OnActiveSidesChanged.Broadcast(*this);
+    }
+}
+#endif
 
 void ACoverObject::GetRuns(TArray<FCoverRun>& OutRuns) const
 {
@@ -124,6 +147,18 @@ bool ACoverObject::TryGetRunForNormal(const FVector& SurfaceNormal, FCoverRun& O
     return false;
 }
 
+void ACoverObject::SetActiveSides(ECoverSide NewActiveSides)
+{
+    const int32 NewValue = static_cast<int32>(NewActiveSides);
+    if (ActiveSides == NewValue)
+    {
+        return;
+    }
+
+    ActiveSides = NewValue;
+    OnActiveSidesChanged.Broadcast(*this);
+}
+
 void ACoverObject::FitOutline()
 {
     const UStaticMesh* StaticMesh = Mesh->GetStaticMesh();
@@ -145,10 +180,10 @@ void ACoverObject::FitOutline()
     // Counter-clockwise seen from above; edges: -Y, +X, +Y, -X
     const FVector Corners[4] =
     {
-        { MinX, MinY, Z },
-        { MaxX, MinY, Z },
-        { MaxX, MaxY, Z },
-        { MinX, MaxY, Z },
+        {MinX, MinY, Z},
+        {MaxX, MinY, Z},
+        {MaxX, MaxY, Z},
+        {MinX, MaxY, Z},
     };
 
     OutlineLine->ClearSplinePoints(false);
@@ -161,4 +196,36 @@ void ACoverObject::FitOutline()
         OutlineLine->SetSplinePointType(Index, ESplinePointType::Linear, false);
     }
     OutlineLine->SetClosedLoop(true, true);
+}
+
+void ACoverObject::DrawDebugRuns() const
+{
+    if (!bDrawDebugRuns || OutlineLine == nullptr || OutlineLine->GetNumberOfSplinePoints() != 4)
+    {
+        return;
+    }
+
+    FVector Points[4];
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        Points[Index] = OutlineLine->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::World);
+    }
+
+    // Blocked edges red, active edges get a normal arrow
+    for (int32 Edge = 0; Edge < 4; ++Edge)
+    {
+        const FVector From = Points[Edge];
+        const FVector To = Points[(Edge + 1) % 4];
+
+        if ((ActiveSides & (1 << Edge)) == 0)
+        {
+            DrawDebugLine(GetWorld(), From, To, FColor::Red, false, -1.0f, 0, 4.0f);
+            continue;
+        }
+
+        const FVector Direction = (To - From).GetSafeNormal2D();
+        const FVector Normal(Direction.Y, -Direction.X, 0.0f);
+        const FVector Mid = (From + To) * 0.5f;
+        DrawDebugDirectionalArrow(GetWorld(), Mid, Mid + Normal * 50.0f, 20.0f, FColor::Green, false, -1.0f, 0, 2.0f);
+    }
 }

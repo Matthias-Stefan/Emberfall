@@ -25,6 +25,25 @@ public:
      */
     TWeakObjectPtr<UCoverPath> GetCoverPath(ACoverObject& CoverObject, const FVector& SurfaceNormal);
 
+    /**
+     * @brief Collects all cover objects, binds their change delegate and builds their paths.
+     * @param InWorld The world that begins play.
+     */
+    virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+
+private:
+    /**
+     * @brief Builds one path per run of a cover object and stores it in @c PathsByRun.
+     * @param CoverObject The object to build the paths for.
+     */
+    void BuildPaths(ACoverObject& CoverObject);
+
+    /**
+     * @brief Drops all cached paths of a cover object after its active sides changed.
+     * @param CoverObject The object whose @c ActiveSides changed.
+     */
+    void ActiveSidesChanged(ACoverObject& CoverObject);
+
 private:
     /** @brief Object and run id inside it. */
     using FCoverRunKey = TPair<TWeakObjectPtr<ACoverObject>, int32>;
