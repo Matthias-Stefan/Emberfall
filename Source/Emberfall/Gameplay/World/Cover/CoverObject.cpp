@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverObjectTypes.h"
 
 #include "Components/SplineComponent.h"
 
@@ -11,8 +12,9 @@ ACoverObject::ACoverObject()
     SetRootComponent(Mesh);
     Mesh->SetCollisionResponseToChannel(ECC_COVER, ECR_Block);
 
-    CoverLine = CreateDefaultSubobject<USplineComponent>(TEXT("CoverLine"));
-    CoverLine->SetupAttachment(Mesh);
+    OutlineLine = CreateDefaultSubobject<USplineComponent>(TEXT("OutlineLine"));
+    OutlineLine->SetupAttachment(Mesh);
+    OutlineLine->SetClosedLoop(true, false);
 
     PrimaryActorTick.bCanEverTick = false;
 }
@@ -21,47 +23,111 @@ void ACoverObject::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-    if (bAutoFitLine)
+    if (bAutoFitOutline)
     {
-        FitCoverLineToMesh();
+        FitOutline();
     }
 }
 
-bool ACoverObject::TryGetLineEnds(FVector& OutStart, FVector& OutEnd) const
+void ACoverObject::GetRuns(TArray<FCoverRun>& OutRuns) const
 {
-    if (CoverLine == nullptr || CoverLine->GetNumberOfSplinePoints() < 2)
+    OutRuns.Reset();
+
+    if (OutlineLine == nullptr || OutlineLine->GetNumberOfSplinePoints() != 4)
     {
-        return false;
+        return;
     }
 
-    OutStart = CoverLine->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
-    OutEnd = CoverLine->GetLocationAtSplinePoint(
-        CoverLine->GetNumberOfSplinePoints() - 1, ESplineCoordinateSpace::World);
-    return true;
-}
-
-bool ACoverObject::TryGetLocationOnLine(float Alpha, FVector& OutLocation) const
-{
-    FVector Start;
-    FVector End;
-    if (!TryGetLineEnds(Start, End))
+    FVector Points[4];
+    for (int32 Index = 0; Index < 4; ++Index)
     {
-        return false;
+        Points[Index] = OutlineLine->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::World);
     }
 
-    OutLocation = FMath::Lerp(Start, End, FMath::Clamp(Alpha, 0.0f, 1.0f));
-    return true;
+    // Edge i runs from point i to point i + 1; counter-clockwise, so the outward normal is the edge direction rotated by -90 degrees
+    FVector Normals[4];
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const FVector Direction = (Points[(Index + 1) % 4] - Points[Index]).GetSafeNormal2D();
+        Normals[Index] = FVector(Direction.Y, -Direction.X, 0.0f);
+    }
+
+    auto IsActive = [this](int32 Edge) { return (ActiveSides & (1 << Edge)) != 0; };
+
+    // All edges active: one closed run
+    if (ActiveSides == static_cast<int32>(ECoverSide::All))
+    {
+        FCoverRun& Run = OutRuns.AddDefaulted_GetRef();
+        Run.bClosed = true;
+        for (int32 Index = 0; Index < 4; ++Index)
+        {
+            Run.Points.Add(Points[Index]);
+            Run.EdgeNormals.Add(Normals[Index]);
+            Run.EdgeIds.Add(Index);
+        }
+        return;
+    }
+
+    // Start right after a blocked edge, so no run is split by the array wrap-around
+    int32 FirstBlocked = INDEX_NONE;
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        if (!IsActive(Index))
+        {
+            FirstBlocked = Index;
+            break;
+        }
+    }
+    if (FirstBlocked == INDEX_NONE)
+    {
+        return;
+    }
+
+    FCoverRun* Current = nullptr;
+    for (int32 Step = 1; Step <= 4; ++Step)
+    {
+        const int32 Edge = (FirstBlocked + Step) % 4;
+        if (!IsActive(Edge))
+        {
+            Current = nullptr;
+            continue;
+        }
+
+        if (Current == nullptr)
+        {
+            Current = &OutRuns.AddDefaulted_GetRef();
+            Current->Points.Add(Points[Edge]);
+        }
+        Current->Points.Add(Points[(Edge + 1) % 4]);
+        Current->EdgeNormals.Add(Normals[Edge]);
+        Current->EdgeIds.Add(Edge);
+    }
 }
 
-bool ACoverObject::CanDockFromNormal(const FVector& SurfaceNormal) const
+bool ACoverObject::TryGetRunForNormal(const FVector& SurfaceNormal, FCoverRun& OutRun, int32& OutRunId) const
 {
-    return FVector::DotProduct(SurfaceNormal, GetDockNormal()) > 0.7f;
+    TArray<FCoverRun> Runs;
+    GetRuns(Runs);
+
+    for (const FCoverRun& Run : Runs)
+    {
+        for (const FVector& EdgeNormal : Run.EdgeNormals)
+        {
+            if (FVector::DotProduct(EdgeNormal, SurfaceNormal) > 0.7f)
+            {
+                OutRun = Run;
+                OutRunId = Run.EdgeIds[0];
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
-void ACoverObject::FitCoverLineToMesh()
+void ACoverObject::FitOutline()
 {
     const UStaticMesh* StaticMesh = Mesh->GetStaticMesh();
-    if (!StaticMesh)
+    if (StaticMesh == nullptr)
     {
         return;
     }
@@ -69,14 +135,30 @@ void ACoverObject::FitCoverLineToMesh()
     const FBox Box = StaticMesh->GetBoundingBox();
 
     // The spline inherits the mesh scale, so convert the world-space offset to local space
-    const float ScaleY = FMath::Max(FMath::Abs(Mesh->GetComponentScale().Y), UE_KINDA_SMALL_NUMBER);
+    const FVector Scale = Mesh->GetComponentScale().GetAbs().ComponentMax(FVector(UE_KINDA_SMALL_NUMBER));
+    const float MinX = Box.Min.X - LineOffset / Scale.X;
+    const float MaxX = Box.Max.X + LineOffset / Scale.X;
+    const float MinY = Box.Min.Y - LineOffset / Scale.Y;
+    const float MaxY = Box.Max.Y + LineOffset / Scale.Y;
+    const float Z = Box.GetCenter().Z;
 
-    const float LineY = Box.Max.Y + LineOffset / ScaleY;
-    const float LineZ = Box.GetCenter().Z;
+    // Counter-clockwise seen from above; edges: -Y, +X, +Y, -X
+    const FVector Corners[4] =
+    {
+        { MinX, MinY, Z },
+        { MaxX, MinY, Z },
+        { MaxX, MaxY, Z },
+        { MinX, MaxY, Z },
+    };
 
-    CoverLine->ClearSplinePoints(false);
-    CoverLine->AddSplinePoint(FVector(Box.Min.X, LineY, LineZ), ESplineCoordinateSpace::Local, false);
-    CoverLine->AddSplinePoint(FVector(Box.Max.X, LineY, LineZ), ESplineCoordinateSpace::Local, false);
-    CoverLine->SetSplinePointType(0, ESplinePointType::Linear, false);
-    CoverLine->SetSplinePointType(1, ESplinePointType::Linear, true);
+    OutlineLine->ClearSplinePoints(false);
+    for (const FVector& Corner : Corners)
+    {
+        OutlineLine->AddSplinePoint(Corner, ESplineCoordinateSpace::Local, false);
+    }
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        OutlineLine->SetSplinePointType(Index, ESplinePointType::Linear, false);
+    }
+    OutlineLine->SetClosedLoop(true, true);
 }

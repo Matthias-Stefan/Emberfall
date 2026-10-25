@@ -1,69 +1,39 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverPath.h"
-
-#include "VectorUtil.h"
-#include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverObjectTypes.h"
 
 
-void UCoverPath::Initialize(const TArray<TWeakObjectPtr<ACoverObject>>& OrderedWalls)
+void UCoverPath::Initialize(const FCoverRun& Run)
 {
     Segments.Reset();
     Length = 0.0f;
+    bClosed = Run.bClosed;
 
-    if (OrderedWalls.IsEmpty())
+    const int32 EdgeCount = Run.EdgeNormals.Num();
+    if (EdgeCount == 0 || Run.Points.Num() < 2)
     {
         return;
     }
 
-    // Path direction from the first to the last wall; stays zero for a single wall
-    FVector PathDirection = FVector::ZeroVector;
-
-    const TWeakObjectPtr<ACoverObject>& FirstWall = OrderedWalls[0];
-    const TWeakObjectPtr<ACoverObject>& LastWall = OrderedWalls.Last();
-
-    FVector FirstWallMiddlePoint = FVector::ZeroVector;
-    FVector LastWallMiddlePoint = FVector::ZeroVector;
-    if (FirstWall != LastWall &&
-        FirstWall.IsValid() && FirstWall->TryGetLocationOnLine(0.5f, FirstWallMiddlePoint) &&
-        LastWall.IsValid() && LastWall->TryGetLocationOnLine(0.5f, LastWallMiddlePoint))
+    for (int32 Edge = 0; Edge < EdgeCount; ++Edge)
     {
-        PathDirection = LastWallMiddlePoint - FirstWallMiddlePoint;
-    }
+        // Closed runs wrap: the last edge ends at the first point
+        const FVector From = Run.Points[Edge];
+        const FVector To = Run.Points[(Edge + 1) % Run.Points.Num()];
 
-    for (const TWeakObjectPtr<ACoverObject>& Wall : OrderedWalls)
-    {
-        if (!Wall.IsValid())
-        {
-            continue;
-        }
-
-        FVector From = FVector::ZeroVector;
-        FVector To = FVector::ZeroVector;
-        if (!Wall->TryGetLineEnds(From, To))
-        {
-            continue;
-        }
-
-        if (!PathDirection.IsNearlyZero() && FVector::DotProduct(To - From, PathDirection) < 0.0f)
-        {
-            Swap(From, To);
-        }
-        
-        // Straight walls only: the length is the distance between the end points
         const float SegmentLength = FVector::Dist(From, To);
         if (SegmentLength <= UE_KINDA_SMALL_NUMBER)
         {
             continue;
         }
-        
+
         FCoverPathSegment Segment{};
-        Segment.Wall = Wall;
         Segment.StartDistance = Length;
         Segment.Length = SegmentLength;
         Segment.From = From;
         Segment.To = To;
-        Segment.Normal = Wall->GetDockNormal();
+        Segment.Normal = Run.EdgeNormals[Edge];
         Segments.Add(Segment);
 
         Length += SegmentLength;
@@ -74,13 +44,13 @@ float UCoverPath::FindDistanceClosestTo(const FVector& WorldLocation) const
 {
     float BestDistToPathSq = TNumericLimits<float>::Max();
     float BestDistanceAlongPath = 0.0f;
-    
+
     for (const FCoverPathSegment& Segment : Segments)
     {
         const FVector SegmentDirection = (Segment.To - Segment.From).GetSafeNormal();
         const FVector ToPlayer = WorldLocation - Segment.From;
 
-        // Shadow of the player on the wall, clamped to the wall
+        // Shadow of the player on the edge, clamped to the edge
         float DistanceOnSegment = FVector::DotProduct(ToPlayer, SegmentDirection);
         DistanceOnSegment = FMath::Clamp(DistanceOnSegment, 0.0f, Segment.Length);
 
@@ -98,6 +68,8 @@ float UCoverPath::FindDistanceClosestTo(const FVector& WorldLocation) const
 
 FVector UCoverPath::GetLocationAtDistance(float Distance) const
 {
+    Distance = WrapDistance(Distance);
+
     const FCoverPathSegment* Segment = GetSegmentAtDistance(Distance);
     if (Segment == nullptr)
     {
@@ -110,12 +82,14 @@ FVector UCoverPath::GetLocationAtDistance(float Distance) const
 
 FVector UCoverPath::GetNormalAtDistance(float Distance) const
 {
+    Distance = WrapDistance(Distance);
+
     const FCoverPathSegment* Segment = GetSegmentAtDistance(Distance);
     if (Segment == nullptr)
     {
         return FVector::ZeroVector;
     }
-    
+
     return Segment->Normal;
 }
 
@@ -138,4 +112,15 @@ const FCoverPathSegment* UCoverPath::GetSegmentAtDistance(float Distance) const
     }
 
     return Found;
+}
+
+float UCoverPath::WrapDistance(float Distance) const
+{
+    if (!bClosed || Length <= UE_KINDA_SMALL_NUMBER)
+    {
+        return Distance;
+    }
+
+    const float Wrapped = FMath::Fmod(Distance, Length);
+    return Wrapped < 0.0f ? Wrapped + Length : Wrapped;
 }

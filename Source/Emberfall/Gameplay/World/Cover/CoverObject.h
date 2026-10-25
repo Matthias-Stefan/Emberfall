@@ -2,26 +2,15 @@
 
 #pragma once
 
+#include "Emberfall/Gameplay/World/Cover/CoverObjectTypes.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "CoverObject.generated.h"
 
+struct FCoverRun;
 class USplineComponent;
 
-
-/** Trace channel "Cover", must match Project Settings. */
-#define ECC_COVER ECC_GameTraceChannel1
-
-/** @brief Height class of a cover object. */
-UENUM(BlueprintType)
-enum class ECoverHeight : uint8
-{
-    /** @brief Crouch behind it. */
-    Low,
-
-    /** @brief Stand and lean against it. */
-    High
-};
 
 /**
  * @brief Anything a unit can take cover behind or lean against.
@@ -35,55 +24,35 @@ public:
     ACoverObject();
 
     /**
-     * @brief Refits the cover line to the mesh bounds when @c bAutoFitLine is set.
+     * @brief Refits the outline to the mesh bounds when @c bAutoFitOutline is set.
      * @param Transform Actor transform used for construction.
      */
     virtual void OnConstruction(const FTransform& Transform) override;
-
-    /**
-     * @brief Returns the cover line spline.
-     * @return Spline running along the cover face the units dock to.
-     */
-    USplineComponent* GetCoverLine() const { return CoverLine; }
 
     /**
      * @brief Returns the height class of this cover.
      * @return @c ECoverHeight of the object.
      */
     ECoverHeight GetCoverHeight() const { return CoverHeight; }
-
-    /**
-     * @brief Returns the outward normal of the face the cover line sits on.
-     * @return World-space unit vector pointing away from the docking face.
-     */
-    FVector GetDockNormal() const { return Mesh->GetRightVector(); };
-
-    /**
-     * @brief Writes the world-space end points of the cover line.
-     * @param OutStart Receives the first point of the cover line.
-     * @param OutEnd Receives the last point of the cover line.
-     * @return @c true if the wall has a valid cover line, otherwise @c false and the outputs stay untouched.
-     */
-    bool TryGetLineEnds(FVector& OutStart, FVector& OutEnd) const;
-
-    /**
-     * @brief Writes the world-space location at a fraction of the cover line.
-     * @param Alpha Fraction along the line, @c 0 is the start and @c 1 the end; clamped to that range.
-     * @param OutLocation Receives the location on the cover line.
-     * @return @c true if the wall has a valid cover line, otherwise @c false and the output stays untouched.
-     */
-    bool TryGetLocationOnLine(float Alpha, FVector& OutLocation) const;
     
     /**
-     * @brief Checks whether a unit hitting the cover at the given surface may dock.
-     * @param SurfaceNormal Normal of the surface hit by the cover trace.
-     * @return @c true if the normal points to the docking side of the cover.
+     * @brief Derives the walkable runs from @c OutlineLine and @c ActiveSides.
+     * @param OutRuns Receives the runs (cleared first).
      */
-    bool CanDockFromNormal(const FVector& SurfaceNormal) const;
+    void GetRuns(TArray<FCoverRun>& OutRuns) const;
+
+    /**
+     * @brief Finds the active run that has an edge facing the given surface normal.
+     * @param SurfaceNormal Normal of the surface hit by the cover trace.
+     * @param OutRun Receives the run.
+     * @param OutRunId Receives the id of the run within this object.
+     * @return @c true if an active edge faces the normal, otherwise @c false.
+     */
+    bool TryGetRunForNormal(const FVector& SurfaceNormal, FCoverRun& OutRun, int32& OutRunId) const;
 
 private:
-    /** @brief Places the two @c CoverLine points along the X axis of the mesh bounds. */
-    void FitCoverLineToMesh();
+    /** @brief Rebuilds @c OutlineLine as a closed rectangle around the mesh bounds. */
+    void FitOutline();
 
 protected:
     /** @brief Visual mesh of the cover object, blocks the @c Cover trace channel. */
@@ -94,16 +63,19 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Cover")
     ECoverHeight CoverHeight = ECoverHeight::Low;
 
-
-    /** @brief Line along the cover face, units move on it while in cover. */
+    /** @brief When @c true the outline is rebuilt from the mesh bounds on every construction, overwriting manual edits. */
     UPROPERTY(EditAnywhere, Category = "Cover")
-    TObjectPtr<USplineComponent> CoverLine;
+    bool bAutoFitOutline = true;
 
-    /** @brief When @c true the cover line is rebuilt from the mesh bounds on every construction, overwriting manual edits. */
-    UPROPERTY(EditAnywhere, Category = "Cover")
-    bool bAutoFitLine = true;
-
-    /** @brief Distance in cm (world units) the cover line is moved outwards from the +Y face of the mesh. */
+    /** @brief Distance in cm (world units) the outline is moved outwards from the mesh bounds. */
     UPROPERTY(EditAnywhere, Category = "Cover")
     float LineOffset = 30.0f;
+
+    /** @brief Sides that offer cover; deactivate a side for windows, doors or a wall behind it. */
+    UPROPERTY(EditAnywhere, Category = "Cover", meta = (Bitmask, BitmaskEnum = "/Script/Emberfall.ECoverSide"))
+    int32 ActiveSides{ static_cast<int32>(ECoverSide::All) };
+
+    /** @brief Closed loop around the mesh; edge @c i runs from point @c i to point @c i + 1 (see @c ECoverSide order). */
+    UPROPERTY(VisibleAnywhere, Category = "Cover")
+    TObjectPtr<USplineComponent> OutlineLine;
 };

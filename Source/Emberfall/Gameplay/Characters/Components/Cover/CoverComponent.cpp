@@ -125,7 +125,7 @@ bool UCoverComponent::TryEnterCover()
     }
 
     ACoverObject* Cover = Cast<ACoverObject>(Hit.GetActor());
-    if (Cover == nullptr || !Cover->CanDockFromNormal(Hit.ImpactNormal))
+    if (Cover == nullptr)
     {
         return false;
     }
@@ -137,10 +137,10 @@ bool UCoverComponent::TryEnterCover()
         return false;
     }
     
-    const TWeakObjectPtr<UCoverPath> Path = CoverSubsystem->GetCoverPath(*Cover);
+    // Invalid if the hit side is blocked, that is a normal miss and not an error
+    const TWeakObjectPtr<UCoverPath> Path = CoverSubsystem->GetCoverPath(*Cover, Hit.ImpactNormal);
     if (!Path.IsValid())
     {
-        UE_LOG(LogEmberfall, Warning, TEXT("%s: no cover path for %s."), *GetNameSafe(this), *GetNameSafe(Cover));
         return false;
     }
     CoverPath = Path;
@@ -149,9 +149,9 @@ bool UCoverComponent::TryEnterCover()
     // Dock target
     //
     
-    CoverNormal = Cover->GetDockNormal().GetSafeNormal2D();
-    
     const float DistanceOnPath = ClampToPathMargins(CoverPath->FindDistanceClosestTo(Start));
+    CoverNormal = CoverPath->GetNormalAtDistance(DistanceOnPath).GetSafeNormal2D();
+
     FVector Target = CoverPath->GetLocationAtDistance(DistanceOnPath);
     Target.Z = Start.Z;
 
