@@ -51,13 +51,6 @@ public:
      */
     UFUNCTION(BlueprintPure, Category = "Selection")
     EPlayerUnitTypes GetSelectionState() const { return SelectionState; }
-
-    /**
-     * @brief Returns the cover component of the unit.
-     * @return The @c UCoverComponent, never @c nullptr after construction.
-     */
-    UFUNCTION(BlueprintPure, Category = "Cover")
-    UCoverComponent* GetCoverComponent() const { return CoverComponent; }
     
 protected:
     /**
@@ -80,8 +73,4 @@ private:
 
     /** @brief Derived from @c bHovered / @c bSelected, where @c Selected wins over @c Hovered. */
     EPlayerUnitTypes SelectionState = EPlayerUnitTypes::None;
-    
-    /** @brief Handles entering, leaving and moving along cover. */
-    UPROPERTY(VisibleAnywhere, Category = "Components")
-    TObjectPtr<UCoverComponent> CoverComponent;
 };

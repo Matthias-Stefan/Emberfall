@@ -2,7 +2,6 @@
 
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
 #include "Emberfall/Core/EmberfallLog.h"
-#include "Emberfall/Gameplay/Characters/Components/Cover/CoverComponent.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnitAIController.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnitTypes.h"
 
@@ -13,7 +12,6 @@ APlayerUnit::APlayerUnit()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    CoverComponent = CreateDefaultSubobject<UCoverComponent>(TEXT("CoverComponent"));
     GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
@@ -26,17 +24,7 @@ void APlayerUnit::MoveToTarget(const FVector& Target)
         return;
     }
 
-    const ECoverState State = CoverComponent->GetCoverState();
-
-    if (State == ECoverState::Docking)
-    {
-        return;
-    }
-
-    const bool bUseNavmesh = (State == ECoverState::None);
-    const FVector Destination = CoverComponent->ConstrainToCover(Target);
-
-    AIController->MoveToLocation(Destination, -1.f, true, bUseNavmesh, bUseNavmesh);
+    AIController->MoveToLocation(Target, -1.f, true, true, true);
 }
 
 void APlayerUnit::SetHovered(bool bInHovered)

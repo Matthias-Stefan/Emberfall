@@ -4,13 +4,11 @@
 #include "Emberfall/Camera/CameraPawn.h"
 #include "Emberfall/Core/EmberfallLog.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
-#include "Emberfall/Gameplay/Characters/Player/PlayerUnitAIController.h"
 #include "Emberfall/PlayerController/Selection/SelectionComponent.h"
 
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Emberfall/Gameplay/Characters/Components/Cover/CoverComponent.h"
 
 
 AEmberfallPlayerController::AEmberfallPlayerController()
@@ -114,7 +112,6 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
         {
             for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
             {
-                It->GetCoverComponent()->TryEnterCover();
             }
         }
 
@@ -122,7 +119,6 @@ void AEmberfallPlayerController::Tick(float DeltaSeconds)
         {
             for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
             {
-                It->GetCoverComponent()->LeaveCover();
             }
         }
     }
