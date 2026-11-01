@@ -74,6 +74,19 @@ class HtAnnexParams:
 
 
 @dataclass
+class HtDoorParams:
+    """Settings for the doors.
+
+    Attributes:
+        max_doors: Maximum number of doors per house, the first one is always placed.
+        chance_falloff: Factor applied to the chance after every visited wall, the first wall has 100 %.
+    """
+
+    max_doors: int = 2
+    chance_falloff: float = 0.5
+
+
+@dataclass
 class HtHouseParams:
     """Everything that applies to the whole house, plus one struct per phase.
 
@@ -88,6 +101,7 @@ class HtHouseParams:
         ground: Settings of the stone layer.
         wings: Settings of the wings.
         annex: Rules for annexes.
+        door: Rules for doors.
     """
 
     house_name: str = "HalfTimberedHouse"
@@ -100,3 +114,5 @@ class HtHouseParams:
     ground: HtGroundLayerParams = field(default_factory=HtGroundLayerParams)
     wings: HtWingParams = field(default_factory=HtWingParams)
     annex: HtAnnexParams = field(default_factory=HtAnnexParams)
+    door: HtDoorParams = field(default_factory=HtDoorParams)
+

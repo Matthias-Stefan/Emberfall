@@ -56,5 +56,9 @@ params: datatypes.HtHouseParams = datatypes.HtHouseParams(
         annex_height=2.2,
         annex_chance=0.75,
     ),
+    door=datatypes.HtDoorParams(
+        max_doors=2,
+        chance_falloff=0.5,
+    )
 )
 ht_house_builder.ht_build_house(params)

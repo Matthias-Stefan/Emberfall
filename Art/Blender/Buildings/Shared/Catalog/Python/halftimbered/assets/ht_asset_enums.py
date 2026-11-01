@@ -17,12 +17,15 @@ class HtAssetKind(Enum):
 
     WALL = "wall"
     POST = "post"
+    DOOR = "door"
 
 
 class HtAssetMaterial(Enum):
     """What an asset is made of (Material)."""
 
-    STONE = "stone"
+    STONE      = "stone"
+    WOOD       = "wood"
+    STONE_WOOD = "stone_wood"
 
 
 def ht_parse_enum(enum_type: type[E], raw: str) -> E | None:

@@ -90,33 +90,37 @@ def _wall_rotation(axis: HtEdgeAxis, outside: HtSide) -> float:
     return angle
 
 
-def ht_plan_walls(house_params: HtHouseParams, runs: list[HtWallRun], catalog: HtAssetCatalog,
-                  main_height_cm: int, annex_height_cm: int) -> list[HtPlacement]:
+def ht_plan_walls(house_params: HtHouseParams, runs: list[HtWallRun], doors: dict[int, int],
+                  catalog: HtAssetCatalog, main_height_cm: int,
+                  annex_height_cm: int) -> list[HtPlacement]:
     """Fills every run with one 160 wall followed by 200 walls, butt-jointed.
 
     Args:
         house_params: Provides grid.
         runs: Closed wall runs.
-        catalog: Catalog the walls are taken from.
+        doors: Run index -> segment index that becomes a door instead of a wall.
+        catalog: Catalog the walls and doors are taken from.
         main_height_cm: Wall height for main runs.
         annex_height_cm: Wall height for annex runs.
 
     Returns:
-        One placement per wall, positions in meters relative to the house origin.
+        One placement per wall or door, positions in meters relative to the house origin.
     """
     grid: float = house_params.grid
     placements: list[HtPlacement] = []
 
-    for run in runs:
+    for run_index, run in enumerate(runs):
         height_cm: int = annex_height_cm if run.kind == HtRectKind.ANNEX else main_height_cm
         lengths_cm: list[int] = [WALL_FIRST_LENGTH_CM] + [WALL_LENGTH_CM] * (run.length_cells - 1)
         rotation_z: float = _wall_rotation(run.axis, run.outside)
+        door_segment: int | None = doors.get(run_index)
 
         cursor: float = run.start * grid + HALF_POST_M
-        for length_cm in lengths_cm:
+        for segment_index, length_cm in enumerate(lengths_cm):
             length_m: float = length_cm / 100.0
+            asset_kind: HtAssetKind = HtAssetKind.DOOR if segment_index == door_segment else HtAssetKind.WALL
             asset: HtAssetDef | None = catalog.first(
-                kind=HtAssetKind.WALL, layer=HtAssetLayer.FOUNDATION,
+                kind=asset_kind, layer=HtAssetLayer.FOUNDATION,
                 length_cm=length_cm, height_cm=height_cm)
             if asset is not None:
                 center: float = cursor + length_m * 0.5

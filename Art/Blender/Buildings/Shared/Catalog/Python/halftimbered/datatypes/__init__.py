@@ -16,6 +16,7 @@ from halftimbered.datatypes.ht_ground_types import HtGroundType
 from halftimbered.datatypes.ht_house_params import (
     HtAnnexParams,
     HtBaseParams,
+    HtDoorParams,
     HtGroundLayerParams,
     HtHouseParams,
     HtWingParams,
@@ -29,6 +30,7 @@ __all__ = [
 
     "HtAnnexParams",
     "HtBaseParams",
+    "HtDoorParams",
     "HtEdge",
     "HtEdgeAxis",
     "HtGroundLayerParams",

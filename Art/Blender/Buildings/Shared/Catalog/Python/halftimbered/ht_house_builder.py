@@ -21,7 +21,7 @@ from halftimbered.ht_blender_utils import ht_discover_assets, ht_remove_house
 from halftimbered.ht_footprint_roll import ht_roll_base_rect, ht_roll_wings
 from halftimbered.ht_footprint_analysis import ht_find_outer_edges, ht_find_pillar_points
 from halftimbered.ht_globals import CATALOG_COLLECTION, ANNEX_HEIGHT_CM, MAIN_HEIGHT_CM
-from halftimbered.layout import ht_find_wall_runs, ht_plan_pillars, ht_plan_walls
+from halftimbered.layout import ht_find_wall_runs, ht_plan_pillars, ht_plan_walls, ht_pick_doors
 
 
 def _create_collection(house_name: str) -> bpy.types.Collection:
@@ -98,10 +98,13 @@ def ht_build_house(house_params: HtHouseParams) -> None:
     edges: list[HtEdge] = ht_find_outer_edges(rects)
     wall_runs: list[HtWallRun] = ht_find_wall_runs(edges, corner_points)
 
+    doors: dict[int, int] = ht_pick_doors(house_params, wall_runs, rng)
+    print(f"ht_build_house: doors (run -> segment) {doors}")
+
     pillar_plan: list[HtPlacement] = ht_plan_pillars(
         house_params, pillar_points, catalog, MAIN_HEIGHT_CM, ANNEX_HEIGHT_CM)
     wall_plan: list[HtPlacement] = ht_plan_walls(
-        house_params, wall_runs, catalog, MAIN_HEIGHT_CM, ANNEX_HEIGHT_CM)
+        house_params, wall_runs, doors, catalog, MAIN_HEIGHT_CM, ANNEX_HEIGHT_CM)
     print(f"ht_build_house: {len(corner_points)} corner pillars, {len(wall_plan)} walls")
 
     ht_build_foundation(house_params, rects, ground_height, collection)

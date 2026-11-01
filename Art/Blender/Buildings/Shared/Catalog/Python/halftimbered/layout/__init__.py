@@ -2,9 +2,11 @@
 
 from halftimbered.layout.ht_pillar_layout import ht_plan_pillars
 from halftimbered.layout.ht_wall_layout import ht_find_wall_runs, ht_plan_walls
+from halftimbered.layout.ht_door_layout import ht_pick_doors
 
 __all__ = [
     "ht_find_wall_runs",
+    "ht_pick_doors",
     "ht_plan_pillars",
     "ht_plan_walls",
 ]
