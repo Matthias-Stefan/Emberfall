@@ -2,11 +2,12 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
-#include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
+#include "Emberfall/Gameplay/World/Cover/CoverDebugDrawer.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGrouper.h"
+#include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
-#include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
 
-#include "DrawDebugHelpers.h"
 #include "EngineUtils.h"
 
 
@@ -21,8 +22,10 @@ void UCoverSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UCoverSubsystem::Deinitialize()
 {
+    Groups.Empty();
     SpatialGrid.Reset();
     CoverObjects.Empty();
+
     Super::Deinitialize();
 }
 
@@ -37,11 +40,12 @@ void UCoverSubsystem::OnWorldBeginPlay(UWorld& InWorld)
         RegisterCoverObject(CoverObject);
     }
 
+    RebuildGroups();
+
 #if ENABLE_DRAW_DEBUG
     if (GetDefault<UCoverSettings>()->bDrawDebugGrid)
     {
-        DrawDebugCells(-1.0f);
-        DrawDebugFootprints(-1.0f);
+        DrawDebug(-1.0f);
     }
 #endif
 }
@@ -82,74 +86,61 @@ void UCoverSubsystem::GetNearbyCoverObjects(const FVector& Position, float Radiu
     }
 }
 
+void UCoverSubsystem::RebuildGroups()
+{
+    Groups.Reset();
+    if (!SpatialGrid)
+    {
+        return;
+    }
+
+    TArray<ACoverObject*> Objects;
+    Objects.Reserve(CoverObjects.Num());
+    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
+    {
+        if (IsValid(CoverObject))
+        {
+            Objects.Add(CoverObject);
+        }
+    }
+
+    const FCoverGrouper Grouper(*SpatialGrid, *GetDefault<UCoverSettings>());
+    Grouper.Build(Objects, Groups);
+}
+
 #if ENABLE_DRAW_DEBUG
-void UCoverSubsystem::DrawDebugCells(float Duration) const
+void UCoverSubsystem::DrawDebug(float Duration) const
 {
     if (!SpatialGrid)
     {
         return;
     }
 
-    const float CellSize = SpatialGrid->GetCellSize();
-    const float GridHeight = GetDefault<UCoverSettings>()->DebugGridPlaneZ;
-    const FVector HalfExtent(CellSize * 0.5f, CellSize * 0.5f, 0.0f);
+    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
+    const FCoverDebugDrawer Drawer(*GetWorld(), *Settings);
+    Drawer.DrawCells(*SpatialGrid, Duration);
+    Drawer.DrawGroups(Groups, Duration);
 
-    for (const TPair<FIntPoint, TArray<TWeakObjectPtr<ACoverObject>>>& CellEntry : SpatialGrid->GetCells())
+    const FCoverOutlineBuilder Builder(*Settings);
+    for (const FCoverGroup& Group : Groups)
     {
-        FString Label = FString::Printf(TEXT("Cell (%d, %d): %d"),
-            CellEntry.Key.X, CellEntry.Key.Y, CellEntry.Value.Num());
-
-        for (const TWeakObjectPtr<ACoverObject>& WeakObject : CellEntry.Value)
+        TArray<TArray<FVector>> Loops;
+        for (const TWeakObjectPtr<ACoverObject>& WeakObject : Group.GetMembers())
         {
-            if (const ACoverObject* CoverObject = WeakObject.Get())
+            const ACoverObject* CoverObject = WeakObject.Get();
+            TArray<FVector> Corners;
+            TArray<FVector> Loop;
+            if (CoverObject
+                && CoverObject->GetFootprintCorners(Corners)
+                && FCoverGeometry::BuildOffsetPolygon2D(Corners, Settings->OutlineOffset, Loop))
             {
-                Label += FString::Printf(TEXT("\n%s"), *CoverObject->GetActorNameOrLabel());
+                Loops.Add(MoveTemp(Loop));
             }
         }
 
-        const FVector CellCenter(
-            (CellEntry.Key.X + 0.5f) * CellSize,
-            (CellEntry.Key.Y + 0.5f) * CellSize,
-            GridHeight);
-
-        DrawDebugBox(GetWorld(), CellCenter, HalfExtent, FColor::Yellow, Duration < 0.0f, Duration);
-        DrawDebugString(GetWorld(), CellCenter + FVector(0.0f, 0.0f, 50.0f), Label,
-            nullptr, FColor::Yellow, Duration, true, 1.2f);
-    }
-}
-
-void UCoverSubsystem::DrawDebugFootprints(float Duration) const
-{
-    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
-
-    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
-    {
-        TArray<FVector> Corners;
-        if (!CoverObject || !CoverObject->GetFootprintCorners(Corners))
-        {
-            continue;
-        }
-
-        FVector Center = FVector::ZeroVector;
-        for (const FVector& Corner : Corners)
-        {
-            Center += Corner;
-        }
-        Center /= Corners.Num();
-
-        for (FVector& Corner : Corners)
-        {
-            const FVector OutwardDirection = (Corner - Center).GetSafeNormal2D();
-            Corner += OutwardDirection * Settings->DebugFootprintOffsetXY;
-            Corner.Z += Settings->DebugFootprintOffsetZ;
-        }
-
-        for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
-        {
-            const FVector& Start = Corners[CornerIndex];
-            const FVector& End = Corners[(CornerIndex + 1) % Corners.Num()];
-            DrawDebugLine(GetWorld(), Start, End, FColor::Blue, Duration < 0.0f, Duration, 0, 4.0f);
-        }
+        TArray<FCoverEdgePiece> Pieces;
+        Builder.FilterOuterPieces(Loops, Pieces);
+        Drawer.DrawPieces(Pieces, Duration);
     }
 }
 #endif
