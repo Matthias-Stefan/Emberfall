@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
+
 class ACoverObject;
 
 
@@ -46,6 +48,18 @@ public:
     int32 GetGroupId() const { return GroupId; }
 
     /**
+     * @brief Replaces the outline loops of the group.
+     * @param InLoops is the list of loops to take over.
+     */
+    void SetLoops(TArray<FCoverLoop>&& InLoops);
+
+    /**
+     * @brief Gives read access to the outline loops.
+     * @return Loops built by the last rebuild, empty if none were built or the outline is not closed.
+     */
+    const TArray<FCoverLoop>& GetLoops() const { return Loops; }
+    
+    /**
      * @brief Gives read access to the members.
      * @return All members, including ones that died since insertion.
      */
@@ -57,4 +71,7 @@ private:
 
     /** @brief Cover objects that belong to this group. */
     TArray<TWeakObjectPtr<ACoverObject>> Members;
+    
+    /** @brief Closed outline loops around the members, derived data that is replaced on every rebuild. */
+    TArray<FCoverLoop> Loops;
 };

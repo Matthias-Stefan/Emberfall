@@ -29,7 +29,7 @@ ___
 ### Outline
 - [x] Chain the kept pieces into ordered, closed loops (tolerance on end points)
 - [ ] Simplify loops (Ramer-Douglas-Peucker) and drop tiny loops, needs `OutlineSimplifyTolerance` and `OutlineMinLoopArea`
-- [ ] Store the loops in `FCoverGroup`
+- [x] Store the loops in `FCoverGroup`
 - [x] Move the loop building (`BuildLoops`) from `DrawDebug` into `FCoverOutlineBuilder`
 - [ ] Tell outer loops from holes (courtyards), e.g. by winding
 - [x] Decide: closed loop around the group, or path on one side only (see overview picture)

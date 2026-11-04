@@ -46,3 +46,8 @@ int32 FCoverGroup::CountLiveMembers() const
     }
     return LiveMembers;
 }
+
+void FCoverGroup::SetLoops(TArray<FCoverLoop>&& InLoops)
+{
+    Loops = MoveTemp(InLoops);
+}

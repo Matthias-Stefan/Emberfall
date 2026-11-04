@@ -104,8 +104,18 @@ void UCoverSubsystem::RebuildGroups()
         }
     }
 
-    const FCoverGrouper Grouper(*SpatialGrid, *GetDefault<UCoverSettings>());
+    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
+
+    const FCoverGrouper Grouper(*SpatialGrid, *Settings);
     Grouper.Build(Objects, Groups);
+
+    const FCoverOutlineBuilder OutlineBuilder(*Settings);
+    for (FCoverGroup& Group : Groups)
+    {
+        TArray<FCoverLoop> Loops;
+        OutlineBuilder.Build(Group, Loops);
+        Group.SetLoops(MoveTemp(Loops));
+    }
 }
 
 #if ENABLE_DRAW_DEBUG
@@ -116,17 +126,13 @@ void UCoverSubsystem::DrawDebug(float Duration) const
         return;
     }
 
-    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
-    const FCoverDebugDrawer Drawer(*GetWorld(), *Settings);
+    const FCoverDebugDrawer Drawer(*GetWorld(), *GetDefault<UCoverSettings>());
     Drawer.DrawCells(*SpatialGrid, Duration);
     Drawer.DrawGroups(Groups, Duration);
 
-    const FCoverOutlineBuilder Builder(*Settings);
     for (const FCoverGroup& Group : Groups)
     {
-        TArray<FCoverLoop> OutlineLoops;
-        Builder.Build(Group, OutlineLoops);
-        Drawer.DrawLoops(OutlineLoops, Duration);
+        Drawer.DrawLoops(Group.GetLoops(), Duration);
     }
 }
 #endif
