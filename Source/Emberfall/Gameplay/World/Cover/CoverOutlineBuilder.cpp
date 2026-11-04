@@ -2,11 +2,15 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
 #include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 
 
 FCoverOutlineBuilder::FCoverOutlineBuilder(const UCoverSettings& InSettings)
     : Settings(InSettings)
 {
+    ensureMsgf(InSettings.OutlineOffset >= InSettings.MergeRadius * 0.5f,
+        TEXT("OutlineOffset (%.1f) must be at least half of MergeRadius (%.1f), otherwise groups split into several outlines."),
+        InSettings.OutlineOffset, InSettings.MergeRadius);
 }
 
 void FCoverOutlineBuilder::FilterOuterPieces(const TArray<TArray<FVector>>& Loops,
@@ -57,6 +61,76 @@ void FCoverOutlineBuilder::FilterOuterPieces(const TArray<TArray<FVector>>& Loop
                     OutPieces.Add(Piece);
                 }
             }
+        }
+    }
+}
+
+void FCoverOutlineBuilder::ChainPieces(const TArray<FCoverEdgePiece>& Pieces, TArray<FCoverLoop>& OutLoops) const
+{
+    OutLoops.Reset();
+
+    TArray<bool> UsedPieces;
+    UsedPieces.Init(false, Pieces.Num());
+
+    // Compared as squared distances in the ground plane, so no square root is needed.
+    const double ToleranceSquared = FMath::Square(static_cast<double>(Settings.OutlineBorderTolerance));
+    auto IsNear = [ToleranceSquared](const FVector& First, const FVector& Second)
+    {
+        return FVector::DistSquared2D(First, Second) <= ToleranceSquared;
+    };
+
+    for (int32 PieceIndex = 0; PieceIndex < Pieces.Num(); ++PieceIndex)
+    {
+        if (UsedPieces[PieceIndex])
+        {
+            continue;
+        }
+
+        UsedPieces[PieceIndex] = true;
+
+        FCoverLoop Loop;
+        const FVector LoopStart = Pieces[PieceIndex].Start;
+        FVector CurrentEnd = Pieces[PieceIndex].End;
+        bool bClosed = false;
+
+        Loop.Points.Add(LoopStart);
+
+        for (;;)
+        {
+            // Check first, otherwise the search could pick up a foreign piece that starts at the closing point.
+            if (IsNear(CurrentEnd, LoopStart))
+            {
+                bClosed = true;
+                break;
+            }
+
+            int32 NextIndex = INDEX_NONE;
+            for (int32 CandidateIndex = 0; CandidateIndex < Pieces.Num(); ++CandidateIndex)
+            {
+                if (!UsedPieces[CandidateIndex] && IsNear(Pieces[CandidateIndex].Start, CurrentEnd))
+                {
+                    NextIndex = CandidateIndex;
+                    break;
+                }
+            }
+
+            if (NextIndex == INDEX_NONE)
+            {
+                break;
+            }
+
+            UsedPieces[NextIndex] = true;
+            Loop.Points.Add(Pieces[NextIndex].Start);
+            CurrentEnd = Pieces[NextIndex].End;
+        }
+
+        if (bClosed)
+        {
+            OutLoops.Add(MoveTemp(Loop));
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("FCoverOutlineBuilder: chain of %d points is not closed, dropped"), Loop.Points.Num());
         }
     }
 }

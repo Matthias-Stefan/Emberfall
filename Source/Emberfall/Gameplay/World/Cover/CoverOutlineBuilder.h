@@ -4,6 +4,7 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 
+struct FCoverLoop;
 struct FCoverEdgePiece;
 
 
@@ -25,6 +26,13 @@ public:
      */
     void FilterOuterPieces(const TArray<TArray<FVector>>& Loops, TArray<FCoverEdgePiece>& OutPieces) const;
 
+    /**
+     * @brief Chains edge pieces into ordered closed loops by matching end points to start points.
+     * @param Pieces is the list of edge pieces, all running in the same direction.
+     * @param OutLoops is filled with one loop per chain, previous content is discarded.
+     */
+    void ChainPieces(const TArray<FCoverEdgePiece>& Pieces, TArray<FCoverLoop>& OutLoops) const;
+    
 private:
     /**
      * @brief Decides whether a piece of one loop lies on the outer boundary of all loops.

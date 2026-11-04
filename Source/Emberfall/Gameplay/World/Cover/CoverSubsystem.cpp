@@ -1,10 +1,10 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
-
-#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
 #include "Emberfall/Gameplay/World/Cover/CoverDebugDrawer.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
 #include "Emberfall/Gameplay/World/Cover/CoverGrouper.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 #include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 
@@ -141,6 +141,10 @@ void UCoverSubsystem::DrawDebug(float Duration) const
         TArray<FCoverEdgePiece> Pieces;
         Builder.FilterOuterPieces(Loops, Pieces);
         Drawer.DrawPieces(Pieces, Duration);
+        
+        TArray<FCoverLoop> OutlineLoops;
+        Builder.ChainPieces(Pieces, OutlineLoops);
+        Drawer.DrawLoops(OutlineLoops, Duration);
     }
 }
 #endif

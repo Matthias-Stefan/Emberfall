@@ -8,6 +8,7 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverGroup.h"
 
+struct FCoverLoop;
 class FCoverSpatialGrid;
 class UCoverSettings;
 class UWorld;
@@ -53,6 +54,13 @@ public:
      */
     void DrawPieces(const TArray<FCoverEdgePiece>& Pieces, float Duration) const;
     
+    /**
+     * @brief Draws every loop as a closed line with numbered points, one color per loop.
+     * @param Loops is the list of loops to visualize.
+     * @param Duration is the lifetime of the shapes in seconds, @c -1 keeps them until the world ends.
+     */
+    void DrawLoops(const TArray<FCoverLoop>& Loops, float Duration) const;
+    
 private:
     /**
      * @brief Derives a stable blue tone from a group id.
@@ -61,6 +69,14 @@ private:
      */
     static FColor GetGroupColor(int32 GroupId);
 
+    /**
+     * @brief Derives a stable color from a loop index.
+     * @param LoopIndex is the position of the loop in its list.
+     * @return Bright color that differs in hue between neighboring indices.
+     */
+    static FColor GetLoopColor(int32 LoopIndex);
+    
+private:
     /** @brief World to draw into, not owned. */
     const UWorld& World;
 

@@ -5,6 +5,7 @@
 #if ENABLE_DRAW_DEBUG
 
 #include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
@@ -110,11 +111,39 @@ void FCoverDebugDrawer::DrawPieces(const TArray<FCoverEdgePiece>& Pieces, float 
     }
 }
 
+void FCoverDebugDrawer::DrawLoops(const TArray<FCoverLoop>& Loops, float Duration) const
+{
+    const FVector Lift(0.0, 0.0, Settings.DebugFootprintOffsetZ);
+
+    for (int32 LoopIndex = 0; LoopIndex < Loops.Num(); ++LoopIndex)
+    {
+        const TArray<FVector>& Points = Loops[LoopIndex].Points;
+        const FColor LoopColor = GetLoopColor(LoopIndex);
+
+        for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+        {
+            const FVector Start = Points[PointIndex] + Lift;
+            const FVector End = Points[(PointIndex + 1) % Points.Num()] + Lift;
+
+            DrawDebugLine(&World, Start, End, LoopColor, Duration < 0.0f, Duration, 0, 6.0f);
+            DrawDebugString(&World, Start + FVector(0.0, 0.0, 30.0), FString::FromInt(PointIndex),
+                nullptr, LoopColor, Duration, true, 1.2f);
+        }
+    }
+}
+
 FColor FCoverDebugDrawer::GetGroupColor(int32 GroupId)
 {
     const uint8 Hue = static_cast<uint8>(130 + (GroupId * 37) % 70);
     const uint8 Value = static_cast<uint8>(140 + (GroupId * 83) % 115);
     return FLinearColor::MakeFromHSV8(Hue, 255, Value).ToFColor(true);
+}
+
+FColor FCoverDebugDrawer::GetLoopColor(int32 LoopIndex)
+{
+    // Starts in the green range so the loops stand out from the blue group footprints and the red pieces.
+    const uint8 Hue = static_cast<uint8>(60 + (LoopIndex * 47) % 150);
+    return FLinearColor::MakeFromHSV8(Hue, 255, 255).ToFColor(true);
 }
 
 #endif

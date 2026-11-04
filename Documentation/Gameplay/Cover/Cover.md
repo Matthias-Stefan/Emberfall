@@ -1,4 +1,4 @@
-﻿---
+---
 type: system
 status: in-progress
 category: gameplay
@@ -20,7 +20,7 @@ single path around it.
 The player character is locked onto this path. Moving along it, the player can peek around corners to spot enemies
 without leaving cover.
 
-![cover-path-overview.png](Documentation/cover-path-overview.png)
+![cover-path-overview.png](Assets/cover-path-overview.png)
 
 ___
 
@@ -32,8 +32,8 @@ ___
 - [ ] Store the loops in `FCoverGroup`
 - [ ] Move the loop building (`BuildLoops`) from `DrawDebug` into `FCoverOutlineBuilder`
 - [ ] Tell outer loops from holes (courtyards), e.g. by winding
-- [ ] Decide: closed loop around the group, or path on one side only (see overview picture)
-- [ ] `ensure` that `OutlineOffset >= MergeRadius / 2`
+- [x] Decide: closed loop around the group, or path on one side only (see overview picture)
+- [x] `ensure` that `OutlineOffset >= MergeRadius / 2`
 - [ ] Known gap: two shapes that only touch with opposite edges keep an edge in their interior
 
 ### Cover system
@@ -45,7 +45,7 @@ ___
 
 ### Cleanup
 - [ ] Doxygen for the new geometry functions, `FCoverEdgePiece` and `FCoverOutlineBuilder`
-- [ ] `Num() < 3` guard in `ContainsPoint2D`
+- [x] `Num() < 3` guard in `ContainsPoint2D`
 - [ ] Automation tests for `FCoverGeometry` and `FDisjointSet` (paper examples)
 - [ ] Note the simplification: height is ignored, all cover stands on one level
 
