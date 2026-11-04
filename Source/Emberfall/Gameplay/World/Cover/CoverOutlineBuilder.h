@@ -4,6 +4,7 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 
+class FCoverGroup;
 struct FCoverLoop;
 struct FCoverEdgePiece;
 
@@ -20,6 +21,13 @@ public:
     FCoverOutlineBuilder() = delete;
 
     /**
+     * @brief Builds the closed outline loops around all members of a group.
+     * @param Group is the group to build the outline for.
+     * @param OutLoops is filled with one loop per outer boundary, previous content is discarded.
+     */
+    void Build(const FCoverGroup& Group, TArray<FCoverLoop>& OutLoops) const;
+    
+    /**
      * @brief Cuts every loop at its crossings with the other loops and keeps the pieces on the outer boundary.
      * @param Loops is the list of closed convex loops, all with the same winding.
      * @param OutPieces is filled with the kept pieces, previous content is discarded.
@@ -32,6 +40,13 @@ public:
      * @param OutLoops is filled with one loop per chain, previous content is discarded.
      */
     void ChainPieces(const TArray<FCoverEdgePiece>& Pieces, TArray<FCoverLoop>& OutLoops) const;
+    
+    /**
+     * @brief Grows the footprint of every member of a group by the outline offset.
+     * @param Group is the group whose members are grown.
+     * @param OutFootprints is filled with one grown footprint per valid member, previous content is discarded.
+     */
+    void BuildGrownFootprints(const FCoverGroup& Group, TArray<TArray<FVector>>& OutFootprints) const;
     
 private:
     /**

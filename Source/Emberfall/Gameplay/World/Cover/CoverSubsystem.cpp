@@ -124,26 +124,8 @@ void UCoverSubsystem::DrawDebug(float Duration) const
     const FCoverOutlineBuilder Builder(*Settings);
     for (const FCoverGroup& Group : Groups)
     {
-        TArray<TArray<FVector>> Loops;
-        for (const TWeakObjectPtr<ACoverObject>& WeakObject : Group.GetMembers())
-        {
-            const ACoverObject* CoverObject = WeakObject.Get();
-            TArray<FVector> Corners;
-            TArray<FVector> Loop;
-            if (CoverObject
-                && CoverObject->GetFootprintCorners(Corners)
-                && FCoverGeometry::BuildOffsetPolygon2D(Corners, Settings->OutlineOffset, Loop))
-            {
-                Loops.Add(MoveTemp(Loop));
-            }
-        }
-
-        TArray<FCoverEdgePiece> Pieces;
-        Builder.FilterOuterPieces(Loops, Pieces);
-        Drawer.DrawPieces(Pieces, Duration);
-        
         TArray<FCoverLoop> OutlineLoops;
-        Builder.ChainPieces(Pieces, OutlineLoops);
+        Builder.Build(Group, OutlineLoops);
         Drawer.DrawLoops(OutlineLoops, Duration);
     }
 }

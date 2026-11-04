@@ -1,9 +1,11 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
-#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
-#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 
+#include "CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGroup.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 
 FCoverOutlineBuilder::FCoverOutlineBuilder(const UCoverSettings& InSettings)
     : Settings(InSettings)
@@ -11,6 +13,17 @@ FCoverOutlineBuilder::FCoverOutlineBuilder(const UCoverSettings& InSettings)
     ensureMsgf(InSettings.OutlineOffset >= InSettings.MergeRadius * 0.5f,
         TEXT("OutlineOffset (%.1f) must be at least half of MergeRadius (%.1f), otherwise groups split into several outlines."),
         InSettings.OutlineOffset, InSettings.MergeRadius);
+}
+
+void FCoverOutlineBuilder::Build(const FCoverGroup& Group, TArray<FCoverLoop>& OutLoops) const
+{
+    TArray<TArray<FVector>> GrownFootprints;
+    BuildGrownFootprints(Group, GrownFootprints);
+
+    TArray<FCoverEdgePiece> OuterPieces;
+    FilterOuterPieces(GrownFootprints, OuterPieces);
+
+    ChainPieces(OuterPieces, OutLoops);
 }
 
 void FCoverOutlineBuilder::FilterOuterPieces(const TArray<TArray<FVector>>& Loops,
@@ -132,6 +145,35 @@ void FCoverOutlineBuilder::ChainPieces(const TArray<FCoverEdgePiece>& Pieces, TA
         {
             UE_LOG(LogTemp, Warning, TEXT("FCoverOutlineBuilder: chain of %d points is not closed, dropped"), Loop.Points.Num());
         }
+    }
+}
+
+void FCoverOutlineBuilder::BuildGrownFootprints(const FCoverGroup& Group, TArray<TArray<FVector>>& OutFootprints) const
+{
+    OutFootprints.Reset();
+    
+    for (const TWeakObjectPtr<ACoverObject>& WeakMember : Group.GetMembers())
+    {
+        const ACoverObject* Member = WeakMember.Get();
+        if (Member == nullptr)
+        {
+            continue;;
+        }
+        
+        TArray<FVector> Corners;
+        if (!Member->GetFootprintCorners(Corners))
+        {
+            continue;
+        }
+        
+        // Members without a mesh or with a spiked corner are skipped, so the index in OutFootprints can differ from the index in the group.
+        TArray<FVector> GrownFootprint;
+        if (!FCoverGeometry::BuildOffsetPolygon2D(Corners, Settings.OutlineOffset, GrownFootprint))
+        {
+            continue;
+        }
+
+        OutFootprints.Add(MoveTemp(GrownFootprint));
     }
 }
 
