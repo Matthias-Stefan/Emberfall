@@ -45,6 +45,14 @@ public:
     UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "0.0", Units = "cm"))
     float OutlineBorderTolerance = 0.1f;
 
+    /** @brief Largest distance from the simplified line at which outline points are dropped in cm. */
+    UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "0.0", Units = "cm"))
+    float OutlineSimplifyTolerance = 10.0f;
+
+    /** @brief Smallest area an outline loop needs to be kept in cm², smaller loops count as gaps from imprecise placement. */
+    UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "0.0"))
+    float OutlineMinLoopArea = 10000.0f;
+    
     //~=============================================================================
     // Debug
 

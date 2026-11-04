@@ -247,3 +247,92 @@ bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, 
     }
     return true;
 }
+
+double FCoverGeometry::DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd)
+{
+    const FVector2D LineDirection(LineEnd.X - LineStart.X, LineEnd.Y - LineStart.Y);
+    const FVector2D ToPoint(Point.X - LineStart.X, Point.Y - LineStart.Y);
+
+    // Without a usable direction there is no line, the distance to the start point is the best answer.
+    const double LineLength = LineDirection.Size();
+    if (LineLength < UE_KINDA_SMALL_NUMBER)
+    {
+        return ToPoint.Size();
+    }
+
+    // The cross product is the area of the parallelogram, divided by the base it is the height.
+    return FMath::Abs(FVector2D::CrossProduct(LineDirection, ToPoint)) / LineLength;
+}
+
+void FCoverGeometry::SimplifyPolyline2D(const TArray<FVector>& Points, double Tolerance, TArray<FVector>& OutPoints)
+{
+    OutPoints.Reset();
+
+    const int32 PointCount = Points.Num();
+    if (PointCount < 3)
+    {
+        OutPoints = Points;
+        return;
+    }
+
+    TArray<bool> KeepPoints;
+    KeepPoints.Init(false, PointCount);
+    KeepPoints[0] = true;
+    KeepPoints[PointCount - 1] = true;
+
+    // Each entry is a range of indices that still has to be checked against its connecting line.
+    TArray<TPair<int32, int32>> RangeStack;
+    RangeStack.Emplace(0, PointCount - 1);
+
+    while (!RangeStack.IsEmpty())
+    {
+        const TPair<int32, int32> Range = RangeStack.Pop();
+
+        double FarthestDistance = 0.0;
+        int32 FarthestIndex = INDEX_NONE;
+        for (int32 Index = Range.Key + 1; Index < Range.Value; ++Index)
+        {
+            const double Distance = DistanceToLine2D(Points[Index], Points[Range.Key], Points[Range.Value]);
+            if (Distance > FarthestDistance)
+            {
+                FarthestDistance = Distance;
+                FarthestIndex = Index;
+            }
+        }
+
+        // Everything between the range ends stays dropped, unless one point sticks out too far.
+        if (FarthestIndex != INDEX_NONE && FarthestDistance > Tolerance)
+        {
+            KeepPoints[FarthestIndex] = true;
+            RangeStack.Emplace(Range.Key, FarthestIndex);
+            RangeStack.Emplace(FarthestIndex, Range.Value);
+        }
+    }
+
+    for (int32 Index = 0; Index < PointCount; ++Index)
+    {
+        if (KeepPoints[Index])
+        {
+            OutPoints.Add(Points[Index]);
+        }
+    }
+}
+
+double FCoverGeometry::Area2D(const TArray<FVector>& Points)
+{
+    if (Points.Num() < 3)
+    {
+        return 0.0;
+    }
+
+    // Shoelace formula: the sum is twice the signed area, the sign only tells the winding.
+    double DoubleSignedArea = 0.0;
+    for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+    {
+        const FVector& Current = Points[PointIndex];
+        const FVector& Next = Points[(PointIndex + 1) % Points.Num()];
+        DoubleSignedArea += Current.X * Next.Y - Next.X * Current.Y;
+    }
+
+    return FMath::Abs(DoubleSignedArea) * 0.5;
+}

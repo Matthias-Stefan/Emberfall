@@ -23,7 +23,22 @@ void FCoverOutlineBuilder::Build(const FCoverGroup& Group, TArray<FCoverLoop>& O
     TArray<FCoverEdgePiece> OuterPieces;
     FilterOuterPieces(GrownFootprints, OuterPieces);
 
-    ChainPieces(OuterPieces, OutLoops);
+    TArray<FCoverLoop> ChainedLoops;
+    ChainPieces(OuterPieces, ChainedLoops);
+    
+    OutLoops.Reset(ChainedLoops.Num());
+    for (const FCoverLoop& ChainedLoop : ChainedLoops)
+    {
+        FCoverLoop SimplifiedLoop;
+        SimplifyLoop(ChainedLoop, SimplifiedLoop);
+
+        // Tiny loops are gaps from imprecise placement, not real courtyards.
+        if (SimplifiedLoop.Points.Num() >= 3
+            && FCoverGeometry::Area2D(SimplifiedLoop.Points) >= Settings.OutlineMinLoopArea)
+        {
+            OutLoops.Add(MoveTemp(SimplifiedLoop));
+        }
+    }
 }
 
 void FCoverOutlineBuilder::FilterOuterPieces(const TArray<TArray<FVector>>& Loops,
@@ -202,4 +217,65 @@ bool FCoverOutlineBuilder::IsPieceOuter(const TArray<TArray<FVector>>& Loops, in
         }
     }
     return true;
+}
+
+void FCoverOutlineBuilder::SimplifyLoop(const FCoverLoop& Loop, FCoverLoop& OutLoop) const
+{
+    OutLoop.Points.Reset();
+
+    const TArray<FVector>& Points = Loop.Points;
+    const int32 PointCount = Points.Num();
+    if (PointCount < 4)
+    {
+        OutLoop.Points = Points;
+        return;
+    }
+
+    // Point 0 is not necessarily a real corner, so the loop is cut at point 0 and at the point farthest from it.
+    // Both are far apart and almost always sit on corners, which the simplification always keeps.
+    int32 SplitIndex = INDEX_NONE;
+    double FarthestDistanceSquared = 0.0;
+    for (int32 PointIndex = 1; PointIndex < PointCount; ++PointIndex)
+    {
+        const double DistanceSquared = FVector::DistSquared2D(Points[0], Points[PointIndex]);
+        if (DistanceSquared > FarthestDistanceSquared)
+        {
+            FarthestDistanceSquared = DistanceSquared;
+            SplitIndex = PointIndex;
+        }
+    }
+
+    if (SplitIndex == INDEX_NONE)
+    {
+        OutLoop.Points = Points;
+        return;
+    }
+
+    // First half runs from point 0 to the split point, second half from the split point back around to point 0.
+    TArray<FVector> FirstHalf;
+    for (int32 PointIndex = 0; PointIndex <= SplitIndex; ++PointIndex)
+    {
+        FirstHalf.Add(Points[PointIndex]);
+    }
+
+    TArray<FVector> SecondHalf;
+    for (int32 PointIndex = SplitIndex; PointIndex < PointCount; ++PointIndex)
+    {
+        SecondHalf.Add(Points[PointIndex]);
+    }
+    SecondHalf.Add(Points[0]);
+
+    const double Tolerance = Settings.OutlineSimplifyTolerance;
+    TArray<FVector> SimplifiedFirstHalf;
+    TArray<FVector> SimplifiedSecondHalf;
+    FCoverGeometry::SimplifyPolyline2D(FirstHalf, Tolerance, SimplifiedFirstHalf);
+    FCoverGeometry::SimplifyPolyline2D(SecondHalf, Tolerance, SimplifiedSecondHalf);
+
+    // The split point ends the first half and starts the second, point 0 ends the second half and starts the first.
+    // Each is taken once, so no zero-length edge appears.
+    OutLoop.Points = SimplifiedFirstHalf;
+    for (int32 PointIndex = 1; PointIndex < SimplifiedSecondHalf.Num() - 1; ++PointIndex)
+    {
+        OutLoop.Points.Add(SimplifiedSecondHalf[PointIndex]);
+    }
 }

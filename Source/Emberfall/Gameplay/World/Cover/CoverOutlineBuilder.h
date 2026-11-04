@@ -58,6 +58,13 @@ private:
      */
     bool IsPieceOuter(const TArray<TArray<FVector>>& Loops, int32 OwnLoopIndex, const FVector& MidPoint) const;
 
+    /**
+     * @brief Removes points of a closed loop that deviate less than the simplify tolerance from the simplified line.
+     * @param Loop is the loop to simplify.
+     * @param OutLoop is filled with the simplified loop, previous content is discarded.
+     */
+    void SimplifyLoop(const FCoverLoop& Loop, FCoverLoop& OutLoop) const;
+    
     /** @brief Settings providing @c OutlineBorderTolerance, not owned. */
     const UCoverSettings& Settings;
 };

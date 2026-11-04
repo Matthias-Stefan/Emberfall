@@ -93,4 +93,28 @@ public:
      * @return @c true if the polygon was grown, @c false if fewer than three corners or a corner is a spike.
      */
     static bool BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, double Offset, TArray<FVector>& OutLoop);
+    
+    /**
+     * @brief Computes the distance of a point to the infinite line through two points.
+     * @param Point is the position to measure from.
+     * @param LineStart is the first point on the line.
+     * @param LineEnd is the second point on the line.
+     * @return Distance in cm, the distance to @c LineStart if both line points coincide.
+     */
+    static double DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd);
+
+    /**
+     * @brief Removes points from an open polyline that deviate less than a tolerance from the simplified line.
+     * @param Points is the list of polyline points in order.
+     * @param Tolerance is the largest distance in cm a dropped point may have from the simplified line.
+     * @param OutPoints is filled with the kept points in order, first and last point are always kept.
+     */
+    static void SimplifyPolyline2D(const TArray<FVector>& Points, double Tolerance, TArray<FVector>& OutPoints);
+    
+    /**
+     * @brief Computes the area enclosed by a closed polygon, ignoring Z.
+     * @param Points is the list of polygon corners in order, the last one connects back to the first.
+     * @return Area in cm², always positive regardless of the winding.
+     */
+    static double Area2D(const TArray<FVector>& Points);
 };
