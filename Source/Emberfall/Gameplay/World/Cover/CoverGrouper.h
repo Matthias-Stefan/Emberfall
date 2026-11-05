@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "Emberfall/Gameplay/World/Cover/CoverGroup.h"
+
+#include "CoreMinimal.h"
 
 class ACoverObject;
 class FCoverSpatialGrid;

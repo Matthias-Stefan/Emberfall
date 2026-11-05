@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
-#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
+#include "CoreMinimal.h"
 
 class ACoverObject;
 

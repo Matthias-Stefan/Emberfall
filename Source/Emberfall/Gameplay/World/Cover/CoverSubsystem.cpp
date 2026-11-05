@@ -2,11 +2,11 @@
 
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 #include "Emberfall/Gameplay/World/Cover/CoverDebugDrawer.h"
-#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
 #include "Emberfall/Gameplay/World/Cover/CoverGrouper.h"
-#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLog.h"
 #include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
 #include "EngineUtils.h"
 
@@ -22,6 +22,14 @@ void UCoverSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UCoverSubsystem::Deinitialize()
 {
+    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
+    {
+        if (CoverObject)
+        {
+            CoverObject->RemoveChangedListeners(this);
+        }
+    }
+    
     Groups.Empty();
     SpatialGrid.Reset();
     CoverObjects.Empty();
@@ -68,7 +76,7 @@ bool UCoverSubsystem::RegisterCoverObject(ACoverObject* CoverObject)
     if (!SpatialGrid->Insert(CoverObject))
     {
         CoverObjects.Remove(CoverObject);
-        UE_LOG(LogTemp, Warning, TEXT("UCoverSubsystem: '%s' has no footprint, not registered"), *CoverObject->GetName());
+        UE_LOG(LogCover, Warning, TEXT("UCoverSubsystem: '%s' has no footprint, not registered"), *CoverObject->GetName());
         return false;
     }
     CoverObject->AddChangedListener(this, &UCoverSubsystem::HandleCoverObjectChanged);
@@ -94,7 +102,7 @@ bool UCoverSubsystem::UnregisterCoverObject(ACoverObject* CoverObject)
     {
         CoverObject->RemoveChangedListeners(this);
         MarkGroupsDirty();
-        UE_LOG(LogTemp, Verbose, TEXT("UCoverSubsystem: unregistered '%s'"), *GetNameSafe(CoverObject));
+        UE_LOG(LogCover, Verbose, TEXT("UCoverSubsystem: unregistered '%s'"), *GetNameSafe(CoverObject));
     }
 
     return bRemoved;
@@ -201,6 +209,7 @@ void UCoverSubsystem::DrawDebug(float Duration)
     
     const TArray<FCoverGroup>& CurrentGroups = GetGroups();
     Drawer.DrawGroups(CurrentGroups, Duration);
+    Drawer.DrawEnabledSides(CurrentGroups, Duration);
 
     for (const FCoverGroup& Group : CurrentGroups)
     {
@@ -229,7 +238,7 @@ void UCoverSubsystem::HandleCoverObjectChanged(ACoverObject* CoverObject)
     if (!SpatialGrid->Insert(CoverObject))
     {
         // Without a footprint the object cannot stay in the grid, keep registry and grid consistent.
-        UE_LOG(LogTemp, Warning, TEXT("UCoverSubsystem: '%s' lost its footprint, unregistered"), *GetNameSafe(CoverObject));
+        UE_LOG(LogCover, Warning, TEXT("UCoverSubsystem: '%s' lost its footprint, unregistered"), *GetNameSafe(CoverObject));
         UnregisterCoverObject(CoverObject);
         return;
     }

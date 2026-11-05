@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
 
 bool FCoverGeometry::ContainsPoint2D(const TArray<FVector>& QuadCorners, const FVector& Point)
@@ -75,6 +76,27 @@ bool FCoverGeometry::ContainsPointStrict2D(const TArray<FVector>& QuadCorners, c
     return true;
 }
 
+bool FCoverGeometry::IsOnBorder2D(const TArray<FVector>& LoopCorners, const FVector& Point, double BorderTolerance)
+{
+    // Z is dropped on both sides, the distance is measured in the ground plane only.
+    const FVector FlatPoint(Point.X, Point.Y, 0.0);
+
+    for (int32 CornerIndex = 0; CornerIndex < LoopCorners.Num(); ++CornerIndex)
+    {
+        const FVector& Current = LoopCorners[CornerIndex];
+        const FVector& Next = LoopCorners[(CornerIndex + 1) % LoopCorners.Num()];
+
+        const FVector FlatStart(Current.X, Current.Y, 0.0);
+        const FVector FlatEnd(Next.X, Next.Y, 0.0);
+        if (FMath::PointDistToSegment(FlatPoint, FlatStart, FlatEnd) <= BorderTolerance)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 double FCoverGeometry::DistanceSquared2D(const TArray<FVector>& FirstQuadCorners,
                                          const TArray<FVector>& SecondQuadCorners)
 {
@@ -113,6 +135,22 @@ double FCoverGeometry::DistanceSquared2D(const TArray<FVector>& FirstQuadCorners
     }
     
     return BestDistanceSquared;
+}
+
+double FCoverGeometry::DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd)
+{
+    const FVector2D LineDirection(LineEnd.X - LineStart.X, LineEnd.Y - LineStart.Y);
+    const FVector2D ToPoint(Point.X - LineStart.X, Point.Y - LineStart.Y);
+
+    // Without a usable direction there is no line, the distance to the start point is the best answer.
+    const double LineLength = LineDirection.Size();
+    if (LineLength < UE_KINDA_SMALL_NUMBER)
+    {
+        return ToPoint.Size();
+    }
+
+    // The cross product is the area of the parallelogram, divided by the base it is the height.
+    return FMath::Abs(FVector2D::CrossProduct(LineDirection, ToPoint)) / LineLength;
 }
 
 bool FCoverGeometry::EdgeIntersect2D(const FVector& FirstStart, const FVector& FirstEnd, const FVector& SecondStart,
@@ -175,29 +213,24 @@ void FCoverGeometry::SplitEdgeAtFractions2D(const FVector& EdgeStart, const FVec
     }
 }
 
-bool FCoverGeometry::IsOnBorder2D(const TArray<FVector>& LoopCorners, const FVector& Point, double BorderTolerance)
+ECoverSide FCoverGeometry::ClassifySide2D(const FVector2D& OutwardNormal, const FVector2D& AxisX,
+    const FVector2D& AxisY)
 {
-    // Z is dropped on both sides, the distance is measured in the ground plane only.
-    const FVector FlatPoint(Point.X, Point.Y, 0.0);
+    // Projection of the normal on each local axis: positive means it faces along the axis, negative against it.
+    const double AlongX = FVector2D::DotProduct(OutwardNormal, AxisX);
+    const double AlongY = FVector2D::DotProduct(OutwardNormal, AxisY);
 
-    for (int32 CornerIndex = 0; CornerIndex < LoopCorners.Num(); ++CornerIndex)
+    // The axis with the larger projection wins, its sign picks the side. Pieces run parallel to the wall edges,
+    // so a tie between the two axes does not occur.
+    if (FMath::Abs(AlongX) >= FMath::Abs(AlongY))
     {
-        const FVector& Current = LoopCorners[CornerIndex];
-        const FVector& Next = LoopCorners[(CornerIndex + 1) % LoopCorners.Num()];
-
-        const FVector FlatStart(Current.X, Current.Y, 0.0);
-        const FVector FlatEnd(Next.X, Next.Y, 0.0);
-        if (FMath::PointDistToSegment(FlatPoint, FlatStart, FlatEnd) <= BorderTolerance)
-        {
-            return true;
-        }
+        return AlongX >= 0.0 ? ECoverSide::PositiveX : ECoverSide::NegativeX;
     }
-    
-    return false;
+    return AlongY >= 0.0 ? ECoverSide::PositiveY : ECoverSide::NegativeY;
 }
 
 bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, double Offset,
-    TArray<FVector>& OutLoop)
+                                          TArray<FVector>& OutLoop)
 {
     OutLoop.Reset();
 
@@ -248,20 +281,23 @@ bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, 
     return true;
 }
 
-double FCoverGeometry::DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd)
+double FCoverGeometry::Area2D(const TArray<FVector>& Points)
 {
-    const FVector2D LineDirection(LineEnd.X - LineStart.X, LineEnd.Y - LineStart.Y);
-    const FVector2D ToPoint(Point.X - LineStart.X, Point.Y - LineStart.Y);
-
-    // Without a usable direction there is no line, the distance to the start point is the best answer.
-    const double LineLength = LineDirection.Size();
-    if (LineLength < UE_KINDA_SMALL_NUMBER)
+    if (Points.Num() < 3)
     {
-        return ToPoint.Size();
+        return 0.0;
     }
 
-    // The cross product is the area of the parallelogram, divided by the base it is the height.
-    return FMath::Abs(FVector2D::CrossProduct(LineDirection, ToPoint)) / LineLength;
+    // Shoelace formula: the sum is twice the signed area, the sign only tells the winding.
+    double DoubleSignedArea = 0.0;
+    for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+    {
+        const FVector& Current = Points[PointIndex];
+        const FVector& Next = Points[(PointIndex + 1) % Points.Num()];
+        DoubleSignedArea += Current.X * Next.Y - Next.X * Current.Y;
+    }
+
+    return FMath::Abs(DoubleSignedArea) * 0.5;
 }
 
 void FCoverGeometry::SimplifyPolyline2D(const TArray<FVector>& Points, double Tolerance, TArray<FVector>& OutPoints)
@@ -318,21 +354,12 @@ void FCoverGeometry::SimplifyPolyline2D(const TArray<FVector>& Points, double To
     }
 }
 
-double FCoverGeometry::Area2D(const TArray<FVector>& Points)
+double FCoverGeometry::PolylineLength2D(const TArray<FVector>& Points)
 {
-    if (Points.Num() < 3)
+    double Length = 0.0;
+    for (int32 PointIndex = 0; PointIndex + 1 < Points.Num(); ++PointIndex)
     {
-        return 0.0;
+        Length += FVector::Dist2D(Points[PointIndex], Points[PointIndex + 1]);
     }
-
-    // Shoelace formula: the sum is twice the signed area, the sign only tells the winding.
-    double DoubleSignedArea = 0.0;
-    for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
-    {
-        const FVector& Current = Points[PointIndex];
-        const FVector& Next = Points[(PointIndex + 1) % Points.Num()];
-        DoubleSignedArea += Current.X * Next.Y - Next.X * Current.Y;
-    }
-
-    return FMath::Abs(DoubleSignedArea) * 0.5;
+    return Length;
 }

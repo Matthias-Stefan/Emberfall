@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLog.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
 #include "Components/SplineComponent.h"
@@ -23,7 +24,7 @@ void ACoverObject::OnConstruction(const FTransform& Transform)
 
     if (!BuildPerimeter())
     {
-        UE_LOG(LogTemp, Warning, TEXT("ACoverObject '%s': BuildPerimeter failed, no static mesh set"), *GetName());
+        UE_LOG(LogCover, Warning, TEXT("ACoverObject '%s': BuildPerimeter failed, no static mesh set"), *GetName());
     }
 }
 
@@ -53,6 +54,24 @@ bool ACoverObject::GetFootprintCorners(TArray<FVector>& OutCorners, float Extent
     OutCorners.Add(MeshTransform.TransformPosition(FVector(LocalCenter.X + HalfX, LocalCenter.Y + HalfY, BottomZ)));
     OutCorners.Add(MeshTransform.TransformPosition(FVector(LocalCenter.X - HalfX, LocalCenter.Y + HalfY, BottomZ)));
     return true;
+}
+
+ECoverSide ACoverObject::GetEnabledSides() const
+{
+    return static_cast<ECoverSide>(EnabledSides & static_cast<int32>(ECoverSide::All));
+}
+
+void ACoverObject::GetSideAxes(FVector2D& OutAxisX, FVector2D& OutAxisY) const
+{
+    const FTransform& MeshTransform = CoverMesh->GetComponentTransform();
+
+    // TransformVector keeps the scale, so a negative scale mirrors the axis. That is intended:
+    // the local +X side then really faces the other way in the world.
+    const FVector WorldAxisX = MeshTransform.TransformVector(FVector::XAxisVector);
+    const FVector WorldAxisY = MeshTransform.TransformVector(FVector::YAxisVector);
+
+    OutAxisX = FVector2D(WorldAxisX.X, WorldAxisX.Y).GetSafeNormal();
+    OutAxisY = FVector2D(WorldAxisY.X, WorldAxisY.Y).GetSafeNormal();
 }
 
 bool ACoverObject::BuildPerimeter() const

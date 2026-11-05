@@ -7,12 +7,11 @@
 #if ENABLE_DRAW_DEBUG
 
 #include "Emberfall/Gameplay/World/Cover/CoverGroup.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
-struct FCoverLoop;
 class FCoverSpatialGrid;
 class UCoverSettings;
 class UWorld;
-struct FCoverEdgePiece;
 
 
 /**
@@ -48,19 +47,19 @@ public:
     void DrawGroups(const TArray<FCoverGroup>& Groups, float Duration) const;
 
     /**
-     * @brief Draws edge pieces as red lines, lifted by the debug offset.
-     * @param Pieces is the list of edge pieces to draw.
+     * @brief Draws every footprint edge of all group members, enabled sides in green and disabled sides in red.
+     * @param Groups is the list of groups whose members are drawn.
      * @param Duration is the lifetime of the lines in seconds, @c -1 keeps them until the world ends.
      */
-    void DrawPieces(const TArray<FCoverEdgePiece>& Pieces, float Duration) const;
-    
+    void DrawEnabledSides(const TArray<FCoverGroup>& Groups, float Duration) const;
+
     /**
-     * @brief Draws every loop as a closed line with numbered points, one color per loop.
+     * @brief Draws every loop with numbered points, one color per loop, closed loops get a closing line.
      * @param Loops is the list of loops to visualize.
      * @param Duration is the lifetime of the shapes in seconds, @c -1 keeps them until the world ends.
      */
     void DrawLoops(const TArray<FCoverLoop>& Loops, float Duration) const;
-    
+
 private:
     /**
      * @brief Derives a stable blue tone from a group id.
@@ -75,8 +74,7 @@ private:
      * @return Bright color that differs in hue between neighboring indices.
      */
     static FColor GetLoopColor(int32 LoopIndex);
-    
-private:
+
     /** @brief World to draw into, not owned. */
     const UWorld& World;
 

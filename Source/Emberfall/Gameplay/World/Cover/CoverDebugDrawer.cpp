@@ -5,10 +5,10 @@
 #if ENABLE_DRAW_DEBUG
 
 #include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
-#include "Emberfall/Gameplay/World/Cover/CoverLoop.h"
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
 #include "DrawDebugHelpers.h"
 
@@ -102,12 +102,49 @@ void FCoverDebugDrawer::DrawGroups(const TArray<FCoverGroup>& Groups, float Dura
     }
 }
 
-void FCoverDebugDrawer::DrawPieces(const TArray<FCoverEdgePiece>& Pieces, float Duration) const
+void FCoverDebugDrawer::DrawEnabledSides(const TArray<FCoverGroup>& Groups, float Duration) const
 {
-    const FVector Lift(0.0, 0.0, Settings.DebugFootprintOffsetZ);
-    for (const FCoverEdgePiece& Piece : Pieces)
+    const FVector Lift(0.0, 0.0, Settings.DebugFootprintOffsetZ * 2.0);
+
+    for (const FCoverGroup& Group : Groups)
     {
-        DrawDebugLine(&World, Piece.Start + Lift, Piece.End + Lift, FColor::Red, Duration < 0.0f, Duration, 0, 4.0f);
+        for (const TWeakObjectPtr<ACoverObject>& WeakMember : Group.GetMembers())
+        {
+            const ACoverObject* Member = WeakMember.Get();
+            TArray<FVector> Corners;
+            if (!Member || !Member->GetFootprintCorners(Corners))
+            {
+                continue;
+            }
+
+            FVector2D AxisX;
+            FVector2D AxisY;
+            Member->GetSideAxes(AxisX, AxisY);
+            const ECoverSide EnabledSides = Member->GetEnabledSides();
+
+            FVector Center = FVector::ZeroVector;
+            for (const FVector& Corner : Corners)
+            {
+                Center += Corner;
+            }
+            Center /= Corners.Num();
+
+            for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
+            {
+                const FVector& Start = Corners[CornerIndex];
+                const FVector& End = Corners[(CornerIndex + 1) % Corners.Num()];
+
+                // The normal points from the center to the edge middle, so it does not depend on the winding.
+                const FVector EdgeMiddle = (Start + End) * 0.5;
+                const FVector2D OutwardNormal =
+                    FVector2D(EdgeMiddle.X - Center.X, EdgeMiddle.Y - Center.Y).GetSafeNormal();
+
+                const ECoverSide Side = FCoverGeometry::ClassifySide2D(OutwardNormal, AxisX, AxisY);
+                const FColor SideColor = EnumHasAnyFlags(EnabledSides, Side) ? FColor::Green : FColor::Red;
+
+                DrawDebugLine(&World, Start + Lift, End + Lift, SideColor, Duration < 0.0f, Duration, 0, 8.0f);
+            }
+        }
     }
 }
 
@@ -117,17 +154,24 @@ void FCoverDebugDrawer::DrawLoops(const TArray<FCoverLoop>& Loops, float Duratio
 
     for (int32 LoopIndex = 0; LoopIndex < Loops.Num(); ++LoopIndex)
     {
-        const TArray<FVector>& Points = Loops[LoopIndex].Points;
+        const FCoverLoop& Loop = Loops[LoopIndex];
+        const int32 PointCount = Loop.Points.Num();
         const FColor LoopColor = GetLoopColor(LoopIndex);
 
-        for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+        for (int32 PointIndex = 0; PointIndex < PointCount; ++PointIndex)
         {
-            const FVector Start = Points[PointIndex] + Lift;
-            const FVector End = Points[(PointIndex + 1) % Points.Num()] + Lift;
-
-            DrawDebugLine(&World, Start, End, LoopColor, Duration < 0.0f, Duration, 0, 6.0f);
+            const FVector Start = Loop.Points[PointIndex] + Lift;
             DrawDebugString(&World, Start + FVector(0.0, 0.0, 30.0), FString::FromInt(PointIndex),
                 nullptr, LoopColor, Duration, true, 1.2f);
+
+            // An open chain has no line from its last point back to the first.
+            if (PointIndex + 1 == PointCount && !Loop.bIsClosed)
+            {
+                continue;
+            }
+
+            const FVector End = Loop.Points[(PointIndex + 1) % PointCount] + Lift;
+            DrawDebugLine(&World, Start, End, LoopColor, Duration < 0.0f, Duration, 0, 6.0f);
         }
     }
 }

@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -43,6 +45,19 @@ public:
      */
     bool GetFootprintCorners(TArray<FVector>& OutCorners, float ExtentScale = 1.0f) const;
 
+    /**
+     * @brief Gets the sides that take part in the cover path.
+     * @return Enabled sides as flags in local space, bits outside of @c ECoverSide are masked out.
+     */
+    ECoverSide GetEnabledSides() const;
+
+    /**
+     * @brief Computes the world directions of the local positive X and Y axes in the ground plane.
+     * @param OutAxisX is filled with the direction of the local positive X axis, normalized.
+     * @param OutAxisY is filled with the direction of the local positive Y axis, normalized.
+     */
+    void GetSideAxes(FVector2D& OutAxisX, FVector2D& OutAxisY) const;
+    
     /**
      * @brief Subscribes a listener to transform changes of this object.
      * @param Listener is the object that receives the call.
@@ -98,6 +113,11 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Cover", meta = (ClampMin = "1.0"))
     float PerimeterScale = 1.5f;
 
+    /** @brief Sides that take part in the cover path as @c ECoverSide flags in local space, all four by default. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cover",
+        meta = (Bitmask, BitmaskEnum = "/Script/Emberfall.ECoverSide"))
+    int32 EnabledSides = static_cast<int32>(ECoverSide::All);
+    
 private:
     /**
      * @brief Forwards a transform change of the cover mesh as a change event of this object.
