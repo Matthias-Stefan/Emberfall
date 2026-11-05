@@ -30,7 +30,7 @@ public:
      * @param CoverObject is the object to insert.
      * @return @c true if inserted, @c false if invalid, already inserted or without footprint.
      */
-    bool Insert(ACoverObject* CoverObject);
+    [[nodiscard]] bool Insert(ACoverObject* CoverObject);
 
     /**
      * @brief Removes a cover object from all cells it was inserted into.

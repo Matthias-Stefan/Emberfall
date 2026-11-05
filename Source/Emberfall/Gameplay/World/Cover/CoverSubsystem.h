@@ -69,14 +69,19 @@ public:
      * @brief Gives read access to the current groups.
      * @return All groups, every registered object is in exactly one of them.
      */
-    const TArray<FCoverGroup>& GetGroups() const { return Groups; }
+    const TArray<FCoverGroup>& GetGroups();
 
+    /**
+     * @brief Marks the groups as outdated and schedules one rebuild for the next tick.
+     */
+    void MarkGroupsDirty();
+    
 #if ENABLE_DRAW_DEBUG
     /**
      * @brief Draws the occupied grid cells and the group footprints for visual verification.
      * @param Duration is the lifetime of the shapes in seconds, @c -1 keeps them until the world ends.
      */
-    void DrawDebug(float Duration) const;
+    void DrawDebug(float Duration);
 #endif
 
 private:
@@ -86,6 +91,12 @@ private:
      */
     void CollectCoverObjects(TArray<ACoverObject*>& OutCoverObjects) const;
 
+    /**
+     * @brief Moves a cover object to the cells of its new position and marks the groups as outdated.
+     * @param CoverObject is the object whose transform changed.
+     */
+    void HandleCoverObjectChanged(ACoverObject* CoverObject);
+    
     /** @brief All currently registered cover objects. */
     UPROPERTY()
     TSet<TObjectPtr<ACoverObject>> CoverObjects;
@@ -95,4 +106,7 @@ private:
 
     /** @brief Groups derived from the registry by @c RebuildGroups, never the source of truth. */
     TArray<FCoverGroup> Groups;
+    
+    /** @brief Whether the groups are outdated and must be rebuilt before the next read. */
+    bool bGroupsDirty{ false };
 };

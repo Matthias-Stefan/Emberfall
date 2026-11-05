@@ -20,24 +20,23 @@
               "icon": "lucide-file",
               "title": "Cover"
             }
-          }
-        ]
-      },
-      {
-        "id": "2cfa978a49200016",
-        "type": "tabs",
-        "children": [
+          },
           {
-            "id": "fc7aa6e30cc44edc",
+            "id": "171db6da7355ffac",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Gameplay/Cover/Cover.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Cover"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -201,18 +200,28 @@
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
-      "bases:Create new base": false
+      "bases:Create new base": false,
+      "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "ea12cff6d0d88975",
+  "active": "91c2819f64557070",
   "lastOpenFiles": [
-    "Welcome.md",
+    "Gameplay/Cover/Assets/cover-excalidraw.md",
+    "Gameplay/Cover/Assets/cover-path-overview (1).svg",
+    "Gameplay/Cover/Cover.md",
+    "Gameplay/Cover/Assets/cover-footprint (1).svg",
+    "Gameplay/Cover/Assets/cover-footprint.svg",
+    "Gameplay/Cover/Assets/cover-path-overview.svg",
     "Gameplay/Cover/Assets/cover-path-overview.png",
+    "Gameplay/Cover/Assets/cover-footprint.png",
+    "Gameplay/Cover/Assets/cover-footprint (1).png",
+    "Gameplay/Cover/Assets/cover-path-overview (1).png",
+    "Untitled.md",
+    "Welcome.md",
     "Gameplay/Cover/Assets",
     "Gameplay/Cover/Media/cover-path-overview.png",
     "Gameplay/Cover/Media",
     "Gameplay/Cover/Neuer Ordner",
-    "Gameplay/Cover/Cover.md",
     "Gameplay/Cover",
     "Gameplay/Neuer Ordner",
     "Gameplay",
