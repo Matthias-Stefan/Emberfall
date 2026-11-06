@@ -1,1 +1,0 @@
-# Copyright (c) 2026 Emberfall. All Rights Reserved.

@@ -2,63 +2,45 @@
 
 # exec(bpy.data.texts["main.py"].as_string())
 
-import sys
-from pathlib import Path
 
 import bpy
 
-PYTHON_DIR: Path = Path(bpy.path.abspath("//")) / "Python"
-if str(PYTHON_DIR) not in sys.path:
-    sys.path.append(str(PYTHON_DIR))
+GEN_MODULES_COLLECTION: str = "GenModules"
 
-for name in list(sys.modules):
-    if name.startswith("halftimbered"):
-        del sys.modules[name]
 
-from halftimbered import datatypes, ht_house_builder
+def recreate_collection(name: str) -> bpy.types.Collection:
+    """Deletes the named collection with all its content and creates it anew.
 
-seed: int | None = None
-if datatypes.USE_TEST_SEEDS:
-    index: int = bpy.app.driver_namespace.get("ht_seed_index", 0) % len(datatypes.HT_TEST_SEEDS)
-    bpy.app.driver_namespace["ht_seed_index"] = index + 1
-    test_seed: datatypes.HtTestSeed = datatypes.HT_TEST_SEEDS[index]
-    seed = test_seed.seed
-    print(f"main: test seed '{test_seed.name}' ({test_seed.seed}) - {test_seed.note}")
+    Args:
+        name: Collection name.
 
-params: datatypes.HtHouseParams = datatypes.HtHouseParams(
-    house_name="HalfTimberedHouse",
-    grid=2.0,
-    offset_x=10.0,
-    offset_y=10.0,
-    seed=seed,
-    base=datatypes.HtBaseParams(
-        min_width=6.0,
-        max_width=8.0,
-        min_depth=4.0,
-        max_depth=6.0,
-    ),
-    ground=datatypes.HtGroundLayerParams(
-        stone_floor_chance=1.0,  # NOTE: no PLINTH
-        plinth_height=0.6,
-        floor_height=2.6,
-    ),
-    wings=datatypes.HtWingParams(
-        max_wings=2,
-        max_attempts=20,
-        min_wing_depth=4.0,
-        max_wing_depth=6.0,
-        min_wing_width=4.0,
-        max_wing_width=8.0,
-    ),
-    annex=datatypes.HtAnnexParams(
-        max_annex_width=6.0,
-        max_annex_depth=6.0,
-        annex_height=2.2,
-        annex_chance=0.75,
-    ),
-    door=datatypes.HtDoorParams(
-        max_doors=2,
-        chance_falloff=0.5,
-    )
-)
-ht_house_builder.ht_build_house(params)
+    Returns:
+        The fresh, empty collection linked to the scene root.
+    """
+    existing: bpy.types.Collection | None = bpy.data.collections.get(name)
+    if existing is not None:
+        for stale_object in list(existing.all_objects):
+            stale_data: bpy.types.ID | None = stale_object.data
+            bpy.data.objects.remove(stale_object, do_unlink=True)
+            if isinstance(stale_data, bpy.types.Mesh) and stale_data.users == 0:
+                bpy.data.meshes.remove(stale_data)
+        bpy.data.collections.remove(existing)
+
+    collection: bpy.types.Collection = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(collection)
+    return collection
+
+
+def main() -> None:
+    """Rebuilds everything generated from scratch.
+
+    Returns:
+        None.
+    """
+    gen_collection: bpy.types.Collection = recreate_collection(GEN_MODULES_COLLECTION)
+    print(f"main: '{gen_collection.name}' recreated")
+    return None
+
+
+if __name__ == "__main__":
+    main()
