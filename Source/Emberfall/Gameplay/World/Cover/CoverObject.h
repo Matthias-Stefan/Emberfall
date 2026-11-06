@@ -12,9 +12,10 @@
 class ACoverObject;
 class USplineComponent;
 class UStaticMeshComponent;
+class UCoverSidesComponent;
 
 
-/** @brief Event fired with the object as argument when its transform changed. */
+/** @brief Event fired with the object as argument when its transform or its enabled sides changed. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnCoverObjectChanged, ACoverObject*);
 
 /**
@@ -27,7 +28,7 @@ class EMBERFALL_API ACoverObject : public AActor
 
 public:
     /**
-     * @brief Creates the mesh root and the perimeter spline subobjects.
+     * @brief Creates the mesh root, the perimeter spline and the editor-only side visualizer.
      */
     ACoverObject();
 
@@ -36,6 +37,14 @@ public:
      * @param Transform is the transform of the actor at construction time.
      */
     virtual void OnConstruction(const FTransform& Transform) override;
+
+#if WITH_EDITOR
+    /**
+     * @brief Reports a change of the enabled sides made in the details panel and refreshes the side drawing.
+     * @param PropertyChangedEvent is the description of the property that changed.
+     */
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
     /**
      * @brief Computes the four bottom corners of the oriented bounding box in world space.
@@ -46,10 +55,24 @@ public:
     bool GetFootprintCorners(TArray<FVector>& OutCorners, float ExtentScale = 1.0f) const;
 
     /**
+     * @brief Computes the footprint corners together with the state of the edge that starts at each corner.
+     * @param OutCorners is filled with the footprint corners in world space, in the order of @c GetFootprintCorners.
+     * @param OutEdgeEnabled is filled with one flag per corner, @c true if the edge to the next corner lies on an enabled side.
+     * @return @c true if the edges were computed, @c false if no static mesh is set.
+     */
+    bool GetFootprintEdges(TArray<FVector>& OutCorners, TArray<bool>& OutEdgeEnabled) const;
+
+    /**
      * @brief Gets the sides that take part in the cover path.
      * @return Enabled sides as flags in local space, bits outside of @c ECoverSide are masked out.
      */
     ECoverSide GetEnabledSides() const;
+
+    /**
+     * @brief Sets the sides that take part in the cover path and reports the change if the mask differs.
+     * @param NewSides is the combination of sides in local space that should take part.
+     */
+    void SetEnabledSides(ECoverSide NewSides);
 
     /**
      * @brief Computes the world directions of the local positive X and Y axes in the ground plane.
@@ -57,9 +80,9 @@ public:
      * @param OutAxisY is filled with the direction of the local positive Y axis, normalized.
      */
     void GetSideAxes(FVector2D& OutAxisX, FVector2D& OutAxisY) const;
-    
+
     /**
-     * @brief Subscribes a listener to transform changes of this object.
+     * @brief Subscribes a listener to changes of this object.
      * @param Listener is the object that receives the call.
      * @param Function is the member function to call with this object as argument.
      */
@@ -117,7 +140,13 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cover",
         meta = (Bitmask, BitmaskEnum = "/Script/Emberfall.ECoverSide"))
     int32 EnabledSides = static_cast<int32>(ECoverSide::All);
-    
+
+#if WITH_EDITORONLY_DATA
+    /** @brief Editor-only drawing of the enabled and disabled sides of the footprint. */
+    UPROPERTY()
+    TObjectPtr<UCoverSidesComponent> SidesVisualizer;
+#endif
+
 private:
     /**
      * @brief Forwards a transform change of the cover mesh as a change event of this object.
@@ -127,10 +156,10 @@ private:
      */
     void HandleMeshTransformUpdated(USceneComponent* UpdatedComponent, EUpdateTransformFlags UpdateTransformFlags,
         ETeleportType Teleport);
-    
-    /** @brief Event fired with this object as argument when its transform changed, only this class broadcasts it. */
+
+    /** @brief Event fired with this object as argument when it changed, only this class broadcasts it. */
     FOnCoverObjectChanged OnChanged;
-    
+
     /** @brief Subscription to the transform updates of the cover mesh, valid between @c BeginPlay and @c EndPlay. */
     FDelegateHandle TransformUpdatedHandle;
 };

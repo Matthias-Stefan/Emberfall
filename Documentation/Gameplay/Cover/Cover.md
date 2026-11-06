@@ -49,4 +49,19 @@ the mesh itself and not from the physics shapes.
 
 
 
+## A. TODO
 
+### Next
+- [ ] Housekeeping: default `OutlineSimplifyTolerance` 15 cm, `[[nodiscard]]` on `FCoverSpatialGrid::Insert`, `!CoverObject` check in `UnregisterCoverObject`, remaining `LogTemp` to `LogCover`, remove the temporary footprint log, `DrawSides` uses `GetFootprintEdges`, check that PIE ends without warnings
+- [ ] Rebuild only the affected groups (measure first with debug drawing switched off)
+
+### Later
+- [ ] Player interaction (walk along the outline, switch sides, cover mode, animation)
+
+## B. Parked, only if it hurts
+- [ ] Editor view of the whole outline (the side component is the template for it)
+- [ ] `SetStaticMesh` at runtime: footprint changes without a transform event, the grid and the side drawing keep the old state
+- [ ] Remove `PerimeterSpline`, `PerimeterHeight` and `PerimeterScale`
+- [ ] Doxygen for the new classes, documentation sections 3 to 5
+- [ ] Outer loops vs. holes, custom footprint spline, preview actors, gap at opposite edges
+- [ ] Automation tests, outline cache, cover as a component

@@ -1,7 +1,10 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+
+#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
 #include "Emberfall/Gameplay/World/Cover/CoverLog.h"
+#include "Emberfall/Gameplay/World/Cover/CoverSidesComponent.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
 #include "Components/SplineComponent.h"
@@ -16,6 +19,11 @@ ACoverObject::ACoverObject()
 
     PerimeterSpline = CreateDefaultSubobject<USplineComponent>(TEXT("PerimeterSpline"));
     PerimeterSpline->SetupAttachment(CoverMesh);
+
+#if WITH_EDITORONLY_DATA
+    SidesVisualizer = CreateDefaultSubobject<UCoverSidesComponent>(TEXT("SidesVisualizer"));
+    SidesVisualizer->SetupAttachment(CoverMesh);
+#endif
 }
 
 void ACoverObject::OnConstruction(const FTransform& Transform)
@@ -27,6 +35,26 @@ void ACoverObject::OnConstruction(const FTransform& Transform)
         UE_LOG(LogCover, Warning, TEXT("ACoverObject '%s': BuildPerimeter failed, no static mesh set"), *GetName());
     }
 }
+
+#if WITH_EDITOR
+void ACoverObject::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    if (PropertyChangedEvent.GetPropertyName() != GET_MEMBER_NAME_CHECKED(ACoverObject, EnabledSides))
+    {
+        return;
+    }
+
+    OnChanged.Broadcast(this);
+
+    // The proxy holds a copy of the edge colors, so it has to be built again.
+    if (SidesVisualizer)
+    {
+        SidesVisualizer->MarkRenderStateDirty();
+    }
+}
+#endif
 
 bool ACoverObject::GetFootprintCorners(TArray<FVector>& OutCorners, float ExtentScale) const
 {
@@ -47,7 +75,7 @@ bool ACoverObject::GetFootprintCorners(TArray<FVector>& OutCorners, float Extent
 
     const FTransform& MeshTransform = CoverMesh->GetComponentTransform();
 
-    // Order: counter-clockwise seen from above, unless the actor is mirrored by a negative scale.
+    // Order: positive signed area in the XY plane, unless the actor is mirrored by a negative scale.
     OutCorners.Reset(4);
     OutCorners.Add(MeshTransform.TransformPosition(FVector(LocalCenter.X - HalfX, LocalCenter.Y - HalfY, BottomZ)));
     OutCorners.Add(MeshTransform.TransformPosition(FVector(LocalCenter.X + HalfX, LocalCenter.Y - HalfY, BottomZ)));
@@ -56,9 +84,60 @@ bool ACoverObject::GetFootprintCorners(TArray<FVector>& OutCorners, float Extent
     return true;
 }
 
+bool ACoverObject::GetFootprintEdges(TArray<FVector>& OutCorners, TArray<bool>& OutEdgeEnabled) const
+{
+    if (!GetFootprintCorners(OutCorners))
+    {
+        return false;
+    }
+
+    FVector2D AxisX;
+    FVector2D AxisY;
+    GetSideAxes(AxisX, AxisY);
+    const ECoverSide Enabled = GetEnabledSides();
+
+    FVector Center = FVector::ZeroVector;
+    for (const FVector& Corner : OutCorners)
+    {
+        Center += Corner;
+    }
+    Center /= OutCorners.Num();
+
+    OutEdgeEnabled.Reset(OutCorners.Num());
+    for (int32 CornerIndex = 0; CornerIndex < OutCorners.Num(); ++CornerIndex)
+    {
+        // The normal points from the center to the edge middle, so it does not depend on the winding.
+        const FVector EdgeMiddle = (OutCorners[CornerIndex] + OutCorners[(CornerIndex + 1) % OutCorners.Num()]) * 0.5;
+        const FVector2D OutwardNormal = FVector2D(EdgeMiddle.X - Center.X, EdgeMiddle.Y - Center.Y).GetSafeNormal();
+
+        const ECoverSide Side = FCoverGeometry::ClassifySide2D(OutwardNormal, AxisX, AxisY);
+        OutEdgeEnabled.Add(EnumHasAnyFlags(Enabled, Side));
+    }
+    return true;
+}
+
 ECoverSide ACoverObject::GetEnabledSides() const
 {
     return static_cast<ECoverSide>(EnabledSides & static_cast<int32>(ECoverSide::All));
+}
+
+void ACoverObject::SetEnabledSides(ECoverSide NewSides)
+{
+    const int32 NewMask = static_cast<int32>(NewSides);
+    if (EnabledSides == NewMask)
+    {
+        return;
+    }
+
+    EnabledSides = NewMask;
+    OnChanged.Broadcast(this);
+
+#if WITH_EDITORONLY_DATA
+    if (SidesVisualizer)
+    {
+        SidesVisualizer->MarkRenderStateDirty();
+    }
+#endif
 }
 
 void ACoverObject::GetSideAxes(FVector2D& OutAxisX, FVector2D& OutAxisY) const

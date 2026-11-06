@@ -60,6 +60,13 @@ public:
      */
     void DrawLoops(const TArray<FCoverLoop>& Loops, float Duration) const;
 
+    /**
+     * @brief Draws the four footprint edges of one wall, enabled sides in green and disabled sides in red.
+     * @param CoverObject is the wall to draw.
+     * @param Duration is the lifetime of the lines in seconds, @c 0 draws for one frame only, @c -1 keeps them until the world ends.
+     */
+    void DrawSides(const ACoverObject& CoverObject, float Duration) const;
+    
 private:
     /**
      * @brief Derives a stable blue tone from a group id.

@@ -176,6 +176,43 @@ void FCoverDebugDrawer::DrawLoops(const TArray<FCoverLoop>& Loops, float Duratio
     }
 }
 
+void FCoverDebugDrawer::DrawSides(const ACoverObject& CoverObject, float Duration) const
+{
+    TArray<FVector> Corners;
+    if (!CoverObject.GetFootprintCorners(Corners))
+    {
+        return;
+    }
+
+    FVector2D AxisX;
+    FVector2D AxisY;
+    CoverObject.GetSideAxes(AxisX, AxisY);
+    const ECoverSide EnabledSides = CoverObject.GetEnabledSides();
+    const FVector Lift(0.0, 0.0, Settings.DebugFootprintOffsetZ * 2.0);
+
+    FVector Center = FVector::ZeroVector;
+    for (const FVector& Corner : Corners)
+    {
+        Center += Corner;
+    }
+    Center /= Corners.Num();
+
+    for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
+    {
+        const FVector& Start = Corners[CornerIndex];
+        const FVector& End = Corners[(CornerIndex + 1) % Corners.Num()];
+
+        // The normal points from the center to the edge middle, so it does not depend on the winding.
+        const FVector EdgeMiddle = (Start + End) * 0.5;
+        const FVector2D OutwardNormal = FVector2D(EdgeMiddle.X - Center.X, EdgeMiddle.Y - Center.Y).GetSafeNormal();
+
+        const ECoverSide Side = FCoverGeometry::ClassifySide2D(OutwardNormal, AxisX, AxisY);
+        const FColor SideColor = EnumHasAnyFlags(EnabledSides, Side) ? FColor::Green : FColor::Red;
+
+        DrawDebugLine(&World, Start + Lift, End + Lift, SideColor, Duration < 0.0f, Duration, 0, 8.0f);
+    }
+}
+
 FColor FCoverDebugDrawer::GetGroupColor(int32 GroupId)
 {
     const uint8 Hue = static_cast<uint8>(130 + (GroupId * 37) % 70);
