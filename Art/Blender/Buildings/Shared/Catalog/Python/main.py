@@ -2,10 +2,38 @@
 
 # exec(bpy.data.texts["main.py"].as_string())
 
+import sys
+from pathlib import Path
 
 import bpy
 
 GEN_MODULES_COLLECTION: str = "GenModules"
+GEN_HOUSES_COLLECTION: str = "GenHouses"
+PACKAGE_PREFIXES: tuple[str, ...] = ("bld_",)
+
+
+def setup_python_path() -> None:
+    """Adds the Python folder next to the .blend file to sys.path.
+
+    Returns:
+        None.
+    """
+    python_dir: Path = Path(bpy.path.abspath("//")) / "Python"
+    if str(python_dir) not in sys.path:
+        sys.path.append(str(python_dir))
+    return None
+
+
+def unload_packages() -> None:
+    """Drops cached package modules so edits are picked up on re-run.
+
+    Returns:
+        None.
+    """
+    for module_name in list(sys.modules):
+        if module_name.startswith(PACKAGE_PREFIXES):
+            del sys.modules[module_name]
+    return None
 
 
 def recreate_collection(name: str) -> bpy.types.Collection:
@@ -31,14 +59,37 @@ def recreate_collection(name: str) -> bpy.types.Collection:
     return collection
 
 
+def setup_viewport_color() -> None:
+    """Switches every 3D viewport to solid shading with object colors.
+
+    Returns:
+        None.
+    """
+    for screen_area in bpy.context.screen.areas:
+        if screen_area.type != "VIEW_3D":
+            continue
+        for space in screen_area.spaces:
+            if space.type == "VIEW_3D":
+                space.shading.type = "SOLID"
+                space.shading.color_type = "OBJECT"
+    return None
+
+
 def main() -> None:
     """Rebuilds everything generated from scratch.
 
     Returns:
         None.
     """
-    gen_collection: bpy.types.Collection = recreate_collection(GEN_MODULES_COLLECTION)
-    print(f"main: '{gen_collection.name}' recreated")
+    setup_python_path()
+    unload_packages()
+
+    from bld_testbed import TestbedRunner
+
+    modules_collection = recreate_collection(GEN_MODULES_COLLECTION)
+    houses_collection = recreate_collection(GEN_HOUSES_COLLECTION)
+    TestbedRunner(modules_collection, houses_collection).run()
+    setup_viewport_color()
     return None
 
 
