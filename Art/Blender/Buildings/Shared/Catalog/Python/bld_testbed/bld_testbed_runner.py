@@ -4,10 +4,15 @@ import bpy
 
 from bld_architecture import Architect, ModuleAtlas
 from bld_blender import MeshWriter
-from bld_module_builder import DoorBuilder, WallBuilder
+from bld_module_builder import (
+    DoorBuilder,
+    PostBuilder,
+    WallBuilder,
+)
 from bld_presets import (
     door_200x30x260,
     door_400x30x260,
+    post_34x34x260,
     wall_100x30x260,
     wall_200x30x260,
     wall_400x30x260,
@@ -52,8 +57,11 @@ class TestbedRunner:
         module_writer: MeshWriter = MeshWriter(self._modules_collection)
         CatalogLayout(module_writer, catalog_rows).place()
 
+        atlas: ModuleAtlas = ModuleAtlas(
+            [module for row in catalog_rows for module, _ in row]
+        )
         house_writer: MeshWriter = MeshWriter(self._houses_collection)
-        architect: Architect = Architect(ModuleAtlas())
+        architect: Architect = Architect(atlas)
         HouseGridLayout(house_writer, architect, default_house_set).place()
         return None
 
@@ -73,7 +81,10 @@ class TestbedRunner:
             (door_200x30x260, DoorBuilder(door_200x30x260)),
             (door_400x30x260, DoorBuilder(door_400x30x260)),
         ]
-        return [wall_row, door_row]
+        post_row: CatalogRow = [
+            (post_34x34x260, PostBuilder(post_34x34x260))
+        ]
+        return [wall_row, door_row, post_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.

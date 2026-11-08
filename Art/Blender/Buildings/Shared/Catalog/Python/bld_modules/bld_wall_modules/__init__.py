@@ -3,15 +3,19 @@
 from .bld_base_wall_module import (
     BaseWallModule,
 )
-from .bld_wall_module import (
-    WallModule
-)
 from .bld_door_module import (
     DoorModule
+)
+from .bld_post_module import (
+    PostModule
+)
+from .bld_wall_module import (
+    WallModule
 )
 
 __all__: list[str] = [
     "BaseWallModule",
-    "WallModule",
     "DoorModule",
+    "PostModule",
+    "WallModule",
 ]
