@@ -1,8 +1,10 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 from bld_modules import WallModule
-from bld_geometry import MeshData
-
+from bld_geometry import (
+    BoxFace,
+    MeshData,
+)
 from .bld_base_module_builder import BaseModuleBuilder
 
 
@@ -36,5 +38,6 @@ class WallBuilder(BaseModuleBuilder):
         result.add_box(
             (-half_width, -half_depth, 0.0),
             (half_width, half_depth, self._wall_module.height),
+            #omit=frozenset({BoxFace.TOP, BoxFace.BOTTOM, BoxFace.LEFT, BoxFace.RIGHT}),
         )
         return result

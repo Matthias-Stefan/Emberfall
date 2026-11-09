@@ -1,7 +1,22 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 from dataclasses import dataclass, field
+from enum import Enum
 
+
+class BoxFace(Enum):
+    """Face of an axis-aligned box."""
+
+    BOTTOM = 0
+    TOP = 1
+    FRONT = 2
+    """Face on the -Y side."""
+    RIGHT = 3
+    """Face on the +X side."""
+    BACK = 4
+    """Face on the +Y side."""
+    LEFT = 5
+    """Face on the -X side."""
 
 @dataclass
 class MeshData:
@@ -16,12 +31,14 @@ class MeshData:
         self,
         min_corner: tuple[float, float, float],
         max_corner: tuple[float, float, float],
+        omit: frozenset[BoxFace] = frozenset(),
     ) -> None:
         """Appends an axis-aligned box.
 
         Args:
             min_corner: Corner with the smallest X, Y and Z in m.
             max_corner: Corner with the largest X, Y and Z in m.
+            omit: Faces that are not generated, e.g. hidden ones.
 
         Returns:
             None.
@@ -41,14 +58,17 @@ class MeshData:
             (min_x, max_y, max_z),  # 7 top, back left
         ])
 
-        for face in (
-            (0, 3, 2, 1),  # bottom (-Z)
-            (4, 5, 6, 7),  # top (+Z)
-            (0, 1, 5, 4),  # front (-Y)
-            (1, 2, 6, 5),  # right (+X)
-            (2, 3, 7, 6),  # back (+Y)
-            (3, 0, 4, 7),  # left (-X)
-        ):
+        box_faces: tuple[tuple[int, ...], ...] = (
+            (0, 3, 2, 1),  # BOTTOM
+            (4, 5, 6, 7),  # TOP
+            (0, 1, 5, 4),  # FRONT
+            (1, 2, 6, 5),  # RIGHT
+            (2, 3, 7, 6),  # BACK
+            (3, 0, 4, 7),  # LEFT
+        )
+        for face_index, face in enumerate(box_faces):
+            if BoxFace(face_index) in omit:
+                continue
             self.faces.append(tuple(first_index + index for index in face))
         return None
 
