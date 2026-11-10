@@ -1,6 +1,7 @@
 ﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 from abc import ABCMeta, abstractmethod
+import bmesh
 
 from bld_modules import BaseModule
 from bld_geometry import MeshData
@@ -22,9 +23,9 @@ class BaseModuleBuilder(metaclass=ABCMeta):
         return None
 
     @abstractmethod
-    def build(self) -> MeshData:
+    def build(self) -> bmesh.types.BMesh:
         """Builds the module geometry.
 
         Returns:
-            Mesh data in m, centered in X and Y, floor at Z = 0.
+            A new BMesh in m, centered in X and Y, floor at Z = 0.
         """

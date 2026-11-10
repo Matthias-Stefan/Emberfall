@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from .bld_base_wall_module import BaseWallModule
+from .bld_base_wall_module import BaseWallModule, TOLERANCE
 
 
 @dataclass(frozen=True)
@@ -12,3 +12,17 @@ class PostModule(BaseWallModule):
     @property
     def name_prefix(self) -> str:
         return "post"
+
+    def validate(self) -> None:
+        """Validates that the post has a square footprint.
+
+        Raises:
+            ValueError: If width and depth differ or the base checks fail.
+
+        Returns:
+            None.
+        """
+        super().validate()  # base checks first
+        if abs(self.width - self.depth) > TOLERANCE:
+            raise ValueError(f"A post needs a square footprint, got {self.width} x {self.depth}")
+        return None

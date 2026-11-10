@@ -7,14 +7,22 @@ from .bld_base_module import (
 from .bld_wall_modules import (
     BaseWallModule,
     DoorModule,
+    OpeningWallModule,
     PostModule,
     WallModule,
+    WindowModule,
+
+    TOLERANCE,
 )
 
 __all__: list[str] = [
     "BaseModule",
     "BaseWallModule",
     "DoorModule",
+    "OpeningWallModule",
     "PostModule",
     "WallModule",
+    "WindowModule",
+
+    "TOLERANCE",
 ]

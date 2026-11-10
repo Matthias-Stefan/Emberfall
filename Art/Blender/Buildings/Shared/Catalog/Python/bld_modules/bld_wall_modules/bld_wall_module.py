@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .bld_base_wall_module import BaseWallModule
 
+
 @dataclass(frozen=True)
 class WallModule(BaseWallModule):
     """Immutable plain closed wall."""

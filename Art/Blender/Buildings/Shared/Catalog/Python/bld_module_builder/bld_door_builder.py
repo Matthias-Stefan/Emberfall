@@ -7,7 +7,7 @@ from .bld_base_module_builder import BaseModuleBuilder
 
 
 class DoorBuilder(BaseModuleBuilder):
-    """Builds a wall with a centered door opening from three boxes."""
+    """Builds a wall with a door opening from three boxes."""
 
     def __init__(self, module: DoorModule) -> None:
         """Creates a door builder.
@@ -29,29 +29,26 @@ class DoorBuilder(BaseModuleBuilder):
             Mesh data in m, centered in X and Y, floor at Z = 0.
         """
         door: DoorModule = self._door_module
-
-        if door.opening_width >= door.width or door.opening_height >= door.height:
-            raise ValueError(f"Opening does not fit into module '{door.name}'")
-
         result: MeshData = MeshData()
 
         half_width: float = door.width * 0.5
         half_depth: float = door.depth * 0.5
-        half_opening: float = door.opening_width * 0.5
+        opening_left: float = -half_width + door.resolved_opening_offset
+        opening_right: float = opening_left + door.opening_width
 
         # left side, full height
         result.add_box(
             (-half_width, -half_depth, 0.0),
-            (-half_opening, half_depth, door.height),
+            (opening_left, half_depth, door.height),
         )
         # right side, full height
         result.add_box(
-            (half_opening, -half_depth, 0.0),
+            (opening_right, -half_depth, 0.0),
             (half_width, half_depth, door.height),
         )
         # lintel above the opening
         result.add_box(
-            (-half_opening, -half_depth, door.opening_height),
-            (half_opening, half_depth, door.height),
+            (opening_left, -half_depth, door.head_height),
+            (opening_right, half_depth, door.height),
         )
         return result

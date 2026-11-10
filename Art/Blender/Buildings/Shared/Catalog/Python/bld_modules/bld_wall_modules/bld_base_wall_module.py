@@ -3,8 +3,11 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from bld_modules import BaseModule
+from ..bld_base_module import BaseModule
 
+
+TOLERANCE: float = 1e-4
+"""Tolerance for float comparisons in m, 0.1 mm."""
 
 @dataclass(frozen=True)
 class BaseWallModule(BaseModule):
@@ -16,6 +19,30 @@ class BaseWallModule(BaseModule):
     """Module height along Z in m."""
     depth: float
     """Wall thickness along Y in m."""
+
+    def __post_init__(self) -> None:
+        """Runs the validation right after construction, do not override.
+
+        Returns:
+            None.
+        """
+        self.validate()
+        return None
+
+    def validate(self) -> None:
+        """Validates the module, subclasses extend this and call super().validate() first.
+
+        Raises:
+            ValueError: If a dimension is not positive.
+
+        Returns:
+            None.
+        """
+        if self.width <= 0.0 or self.height <= 0.0 or self.depth <= 0.0:
+            raise ValueError(
+                f"Dimensions must be positive, got {self.width} x {self.depth} x {self.height}"
+            )
+        return None
 
     @property
     @abstractmethod
