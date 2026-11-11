@@ -24,8 +24,10 @@ class CatalogLayout:
         """Creates a catalog layout.
 
         Args:
-            writer: Writer the module objects are created with.
+writer: Writer the module objects are created with.
             rows: One row per module kind, each a list of module and builder pairs.
+            start_x: X of the first module edge in m, rows grow towards -X from here.
+            start_y: Y of the first row in m, further rows grow towards +Y.
             row_spacing: Distance between rows along Y in m.
             module_gap: Gap between neighbouring modules along X in m.
 

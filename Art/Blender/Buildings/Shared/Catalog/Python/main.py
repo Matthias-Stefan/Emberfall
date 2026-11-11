@@ -60,21 +60,23 @@ def recreate_collection(name: str) -> bpy.types.Collection:
 
 
 def setup_viewport_color() -> None:
-    """Switches every 3D viewport to solid shading with object colors.
+    """Switches the 3D viewports of every workspace to solid shading with object colors.
 
     Returns:
         None.
     """
-    for screen_area in bpy.context.screen.areas:
-        if screen_area.type != "VIEW_3D":
-            continue
-        for space in screen_area.spaces:
-            if space.type == "VIEW_3D":
-                space.shading.type = "SOLID"
-                space.shading.color_type = "OBJECT"
+    for screen in bpy.data.screens:
+        for screen_area in screen.areas:
+            if screen_area.type != "VIEW_3D":
+                continue
+            for space in screen_area.spaces:
+                if space.type == "VIEW_3D":
+                    space.shading.type = "SOLID"
+                    space.shading.color_type = "OBJECT"
     return None
 
 
+# exec(bpy.data.texts["main.py"].as_string())
 def main() -> None:
     """Rebuilds everything generated from scratch.
 

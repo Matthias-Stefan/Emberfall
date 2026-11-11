@@ -8,6 +8,7 @@ from bld_module_builder import (
     DoorBuilder,
     PostBuilder,
     WallBuilder,
+    WindowBuilder,
 )
 from bld_presets import (
     door_200x30x260,
@@ -17,6 +18,9 @@ from bld_presets import (
     wall_200x30x260,
     wall_400x30x260,
     wall_600x30x260,
+    window_100x30x260,
+    window_200x30x260,
+    window_400x30x260
 )
 
 from .bld_catalog_layout import CatalogLayout, CatalogRow
@@ -68,23 +72,32 @@ class TestbedRunner:
     def _build_catalog_rows(self) -> list[CatalogRow]:
         """Pairs every preset with its builder, one row per module kind.
 
+        The catalog shows every module closed on all sides, so the flags are set here.
+
         Returns:
-            Wall row first, door row second.
+            Wall row, door row, window row and post row.
         """
+        closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
+
         wall_row: CatalogRow = [
-            (wall_100x30x260, WallBuilder(wall_100x30x260)),
-            (wall_200x30x260, WallBuilder(wall_200x30x260)),
-            (wall_400x30x260, WallBuilder(wall_400x30x260)),
-            (wall_600x30x260, WallBuilder(wall_600x30x260)),
+            (wall_100x30x260, WallBuilder(wall_100x30x260, **closed)),
+            (wall_200x30x260, WallBuilder(wall_200x30x260, **closed)),
+            (wall_400x30x260, WallBuilder(wall_400x30x260, **closed)),
+            (wall_600x30x260, WallBuilder(wall_600x30x260, **closed)),
         ]
         door_row: CatalogRow = [
-            (door_200x30x260, DoorBuilder(door_200x30x260)),
-            (door_400x30x260, DoorBuilder(door_400x30x260)),
+            (door_200x30x260, DoorBuilder(door_200x30x260, **closed)),
+            (door_400x30x260, DoorBuilder(door_400x30x260, **closed)),
+        ]
+        window_row: CatalogRow = [
+            (window_100x30x260, WindowBuilder(window_100x30x260, **closed)),
+            (window_200x30x260, WindowBuilder(window_200x30x260, **closed)),
+            (window_400x30x260, WindowBuilder(window_400x30x260, **closed)),
         ]
         post_row: CatalogRow = [
-            (post_34x34x260, PostBuilder(post_34x34x260))
+            (post_34x34x260, PostBuilder(post_34x34x260)),
         ]
-        return [wall_row, door_row, post_row]
+        return [wall_row, door_row, window_row, post_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.

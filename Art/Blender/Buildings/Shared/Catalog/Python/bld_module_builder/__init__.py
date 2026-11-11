@@ -12,10 +12,14 @@ from .bld_post_builder import (
 from .bld_wall_builder import (
     WallBuilder
 )
+from .bld_window_builder import (
+    WindowBuilder
+)
 
 __all__: list[str] = [
     "BaseModuleBuilder",
     "DoorBuilder",
     "PostBuilder",
     "WallBuilder",
+    "WindowBuilder",
 ]

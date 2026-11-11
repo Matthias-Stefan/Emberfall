@@ -1,8 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-# bld_testbed/bld_footprint_builder.py
+
+import bmesh
 
 from bld_architecture import Footprint
-from bld_geometry import MeshData
 
 
 class FootprintBuilder:
@@ -22,33 +22,43 @@ class FootprintBuilder:
         self._floor_offset: float = floor_offset
         return None
 
-    def build_main(self) -> MeshData:
+    def build_main(self) -> bmesh.types.BMesh:
         """Builds the quads of the main building.
 
         Returns:
-            Mesh data in m, one cell is 1 m x 1 m.
+            A new BMesh in m, one cell is 1 m x 1 m.
+            The caller owns it and must call free() on it.
         """
         return self._build_cells(self._footprint.main_cells)
 
-    def build_extension(self, extension_index: int) -> MeshData:
+    def build_extension(self, extension_index: int) -> bmesh.types.BMesh:
         """Builds the quads of one extension.
 
         Args:
             extension_index: Index of the extension in placement order.
 
         Returns:
-            Mesh data in m, one cell is 1 m x 1 m.
+            A new BMesh in m, one cell is 1 m x 1 m.
+            The caller owns it and must call free() on it.
         """
         return self._build_cells(self._footprint.extension_cells[extension_index])
 
-    def _build_cells(self, cells: frozenset[tuple[int, int]]) -> MeshData:
-        result: MeshData = MeshData()
+    def _build_cells(self, cells: frozenset[tuple[int, int]]) -> bmesh.types.BMesh:
+        """Builds one quad per cell, facing up.
+
+        Args:
+            cells: Cell indices as (x, y) tuples.
+
+        Returns:
+            A new BMesh, the caller must free it.
+        """
+        bm: bmesh.types.BMesh = bmesh.new()
         height: float = self._floor_offset
         for cell_x, cell_y in sorted(cells):
-            result.add_quad(
-                (cell_x, cell_y, height),
-                (cell_x + 1, cell_y, height),
-                (cell_x + 1, cell_y + 1, height),
-                (cell_x, cell_y + 1, height),
-            )
-        return result
+            bm.faces.new([
+                bm.verts.new((cell_x, cell_y, height)),
+                bm.verts.new((cell_x + 1, cell_y, height)),
+                bm.verts.new((cell_x + 1, cell_y + 1, height)),
+                bm.verts.new((cell_x, cell_y + 1, height)),
+            ])
+        return bm
