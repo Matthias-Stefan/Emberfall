@@ -10,18 +10,26 @@ from dataclasses import replace
 
 import bpy
 
-from bld_architecture import Architect, Footprint, HousePlan
+from bld_architecture import Architect, Footprint, HousePlan, ModulePlacement
 from bld_blender import MeshWriter
 from bld_house_builder import FoundationBuilder
 from bld_module_builder import (
     BaseModuleBuilder,
     DoorBuilder,
+    FloorBuilder,
     PostBuilder,
     StairBuilder,
     WallBuilder,
     WindowBuilder,
 )
-from bld_modules import BaseWallModule, DoorModule, PostModule, StairModule, WindowModule
+from bld_modules import (
+    BaseWallModule,
+    DoorModule,
+    FloorModule,
+    PostModule,
+    StairModule,
+    WindowModule,
+)
 
 from .bld_footprint_builder import FootprintBuilder
 from .bld_footprint_colors import footprint_colors
@@ -116,20 +124,23 @@ class HouseGridLayout:
 
                 # posts and walls, rotated so the module front (-Y) faces outward
                 placement_count: int = 0
-                for ring in plan.rings:
-                    for placement in ring.placements:
-                        module: BaseWallModule = placement.module
-                        module_object: bpy.types.Object = self._writer.write(
-                            f"house_r{row_index}_s{seed}_{module.name}_{placement_count}",
-                            self._builder_for(module).build(),
-                            footprint_colors.color_for(module),
-                        )
-                        module_object.location.x = house_object.location.x + placement.position[0]
-                        module_object.location.y = house_object.location.y + placement.position[1]
-                        module_object.location.z = placement.elevation
-                        module_object.rotation_euler.z = placement.rotation_steps * math.pi * 0.5
-                        placed_objects.append(module_object)
-                        placement_count += 1
+                all_placements: list[ModulePlacement] = [
+                    placement for ring in plan.rings for placement in ring.placements
+                ]
+                all_placements.extend(plan.floor)
+                for placement in all_placements:
+                    module: BaseWallModule = placement.module
+                    module_object: bpy.types.Object = self._writer.write(
+                        f"house_r{row_index}_s{seed}_{module.name}_{placement_count}",
+                        self._builder_for(module).build(),
+                        footprint_colors.color_for(module),
+                    )
+                    module_object.location.x = house_object.location.x + placement.position[0]
+                    module_object.location.y = house_object.location.y + placement.position[1]
+                    module_object.location.z = placement.elevation
+                    module_object.rotation_euler.z = placement.rotation_steps * math.pi * 0.5
+                    placed_objects.append(module_object)
+                    placement_count += 1
 
                 kind: str = "fixed" if seed in self._house_set.fixed_seeds else "random"
                 total_cells: int = len(footprint.main_cells) + sum(
@@ -160,4 +171,6 @@ class HouseGridLayout:
             return WindowBuilder(module)
         if isinstance(module, StairModule):
             return StairBuilder(module)
+        if isinstance(module, FloorModule):
+            return FloorBuilder(module)
         return WallBuilder(module)  # type: ignore[arg-type]

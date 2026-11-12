@@ -10,6 +10,9 @@ from .bld_base_module_builder import (
 from .bld_door_builder import (
     DoorBuilder
 )
+from .bld_floor_builder import (
+    FloorBuilder
+)
 from .bld_post_builder import (
     PostBuilder
 )
@@ -26,6 +29,7 @@ from .bld_window_builder import (
 __all__: list[str] = [
     "BaseModuleBuilder",
     "DoorBuilder",
+    "FloorBuilder",
     "PostBuilder",
     "StairBuilder",
     "WallBuilder",

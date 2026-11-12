@@ -17,6 +17,7 @@ from .bld_create_info import (
 from .bld_house_plan import (
     CellRectangle,
     Footprint,
+    FloorPlanner,
     FootprintDesigner,
     FoundationPlan,
     FoundationPlanner,
@@ -45,6 +46,7 @@ __all__: list[str] = [
     "Footprint",
     "FootprintCreateInfo",
     "FoundationCreateInfo",
+    "FloorPlanner",
     "FootprintDesigner",
     "FoundationPlan",
     "FoundationPlanner",

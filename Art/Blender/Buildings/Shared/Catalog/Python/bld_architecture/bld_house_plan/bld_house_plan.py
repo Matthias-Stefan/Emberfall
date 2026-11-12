@@ -57,3 +57,5 @@ class HousePlan:
     """One ring per closed outer outline."""
     foundation: FoundationPlan | None = None
     """Foundation under the rings, None if the house stands on the ground."""
+    floor: tuple[ModulePlacement, ...] = ()
+    """Floor slabs of the ground level, empty if the house stands on the ground."""

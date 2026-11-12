@@ -8,6 +8,11 @@ from .bld_door_presets import (
     door_200x30x260,
     door_400x30x260,
 )
+from .bld_floor_presets import (
+    floor_100x50x30,
+    floor_100x100x30,
+    floor_50x50x30,
+)
 from .bld_post_presets import (
     post_34x34x260,
     post_40x40x260,
@@ -34,6 +39,9 @@ from .bld_window_presets import (
 __all__: list[str] = [
     "door_200x30x260",
     "door_400x30x260",
+    "floor_100x50x30",
+    "floor_100x100x30",
+    "floor_50x50x30",
     "post_34x34x260",
     "post_40x40x260",
     "stair_200x60x40_2s_open",

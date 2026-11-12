@@ -36,11 +36,15 @@ from .bld_steps.bld_step_5_foundation import (
 from .bld_steps.bld_step_6_stairs import (
     StairPlacer,
 )
+from .bld_steps.bld_step_7_floor import (
+    FloorPlanner,
+)
 
 __all__: list[str] = [
     "CellRectangle",
     "CornerKind",
     "Footprint",
+    "FloorPlanner",
     "FootprintDesigner",
     "FoundationPlan",
     "FoundationPlanner",

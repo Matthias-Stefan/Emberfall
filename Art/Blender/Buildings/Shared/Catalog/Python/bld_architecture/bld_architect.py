@@ -11,6 +11,7 @@ from bld_modules import DoorModule
 from .bld_create_info import BuildingCreateInfo
 from .bld_house_plan import (
     Footprint,
+    FloorPlanner,
     FootprintDesigner,
     FoundationPlan,
     FoundationPlanner,
@@ -26,7 +27,7 @@ from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in six steps: footprint, outline, walls, openings, foundation, stairs."""
+    """Designs building plans in seven steps: footprint, outline, walls, openings, foundation, stairs, floor."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.
@@ -44,6 +45,7 @@ class Architect:
         self._opening_placer: OpeningPlacer = OpeningPlacer(style.atlas)
         self._foundation_planner: FoundationPlanner = FoundationPlanner()
         self._stair_placer: StairPlacer = StairPlacer(style.atlas)
+        self._floor_planner: FloorPlanner = FloorPlanner(style.atlas)
 
     def design(self, create_info: BuildingCreateInfo) -> HousePlan:
         """Designs one building.
@@ -96,4 +98,9 @@ class Architect:
         stair_rings: tuple[ModuleRing, ...] = self._stair_placer.place(
             lifted_rings, foundation, stair_random
         )
-        return HousePlan(footprint=footprint, rings=stair_rings, foundation=foundation)
+        return HousePlan(
+            footprint=footprint,
+            rings=stair_rings,
+            foundation=foundation,
+            floor=self._floor_planner.plan(footprint, foundation),
+        )

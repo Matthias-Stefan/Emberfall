@@ -40,8 +40,8 @@ class FoundationBuilder:
     def build_ring(self, ring_index: int) -> bmesh.types.BMesh:
         """Builds the band of one ring as a closed solid.
 
-        The band reaches from the inside of the wall plus the overhang to the outside of the wall
-        plus the overhang, so it sticks out on both sides of the wall.
+        The band reaches from the inner wall face to the outer wall face plus the overhang, so it
+        sticks out on the outside only and the floor slabs fill the inside.
 
         Args:
             ring_index: Index of the ring in the plan.
@@ -51,7 +51,9 @@ class FoundationBuilder:
             The caller owns it and must call free() on it.
         """
         ring: OutlineRing = self._foundation.outlines[ring_index]
-        reach: float = self._foundation.wall_depth * 0.5 + self._foundation.overhang
+        wall_half: float = self._foundation.wall_depth * 0.5
+        outer_reach: float = wall_half + self._foundation.overhang
+        inner_reach: float = wall_half
         height: float = self._foundation.height
 
         bm: bmesh.types.BMesh = bmesh.new()
@@ -65,14 +67,18 @@ class FoundationBuilder:
             # both walls at a corner are perpendicular, their normals add up to the diagonal
             incoming: tuple[int, int] = _NORMALS[ring.segments[corner_index - 1].outward]
             leaving: tuple[int, int] = _NORMALS[ring.segments[corner_index].outward]
-            shift_x: float = (incoming[0] + leaving[0]) * reach
-            shift_y: float = (incoming[1] + leaving[1]) * reach
+            direction_x: int = incoming[0] + leaving[0]
+            direction_y: int = incoming[1] + leaving[1]
             point_x: float = corner.point[0]
             point_y: float = corner.point[1]
-            outer_bottom.append(bm.verts.new((point_x + shift_x, point_y + shift_y, 0.0)))
-            outer_top.append(bm.verts.new((point_x + shift_x, point_y + shift_y, height)))
-            inner_bottom.append(bm.verts.new((point_x - shift_x, point_y - shift_y, 0.0)))
-            inner_top.append(bm.verts.new((point_x - shift_x, point_y - shift_y, height)))
+            outer_x: float = point_x + direction_x * outer_reach
+            outer_y: float = point_y + direction_y * outer_reach
+            inner_x: float = point_x - direction_x * inner_reach
+            inner_y: float = point_y - direction_y * inner_reach
+            outer_bottom.append(bm.verts.new((outer_x, outer_y, 0.0)))
+            outer_top.append(bm.verts.new((outer_x, outer_y, height)))
+            inner_bottom.append(bm.verts.new((inner_x, inner_y, 0.0)))
+            inner_top.append(bm.verts.new((inner_x, inner_y, height)))
 
         # walking has the building on the left, so the outer edge is on the right of the walk
         for index in range(count):

@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from bld_modules import BaseWallModule, DoorModule, PostModule, StairModule, WindowModule
+from bld_modules import BaseWallModule, DoorModule, FloorModule, PostModule, StairModule, WindowModule
 
 Color = tuple[float, float, float, float]
 
@@ -29,6 +29,8 @@ class FootprintColors:
     """Color of all stair modules, pastel orange."""
     foundation: Color = (0.78, 0.76, 0.72, 1.0)
     """Color of the foundation, pastel stone grey."""
+    floor: Color = (0.86, 0.78, 0.62, 1.0)
+    """Color of all floor modules, pastel wood."""
 
     def __post_init__(self) -> None:
         """Validates that every color has four channels in range.
@@ -39,7 +41,7 @@ class FootprintColors:
         Returns:
             None.
         """
-        for color in (self.main, self.extension, self.door, self.window, self.post, self.stair, self.foundation):
+        for color in (self.main, self.extension, self.door, self.window, self.post, self.stair, self.foundation, self.floor):
             if len(color) != 4 or not all(0.0 <= channel <= 1.0 for channel in color):
                 raise ValueError(f"Invalid color {color}, expected 4 channels in 0..1")
 
@@ -50,7 +52,7 @@ class FootprintColors:
             module: Module to color.
 
         Returns:
-            Door, window, post or stair color, None for modules that keep the default color.
+            Door, window, post, stair or floor color, None for modules that keep the default color.
         """
         if isinstance(module, DoorModule):
             return self.door
@@ -60,6 +62,8 @@ class FootprintColors:
             return self.post
         if isinstance(module, StairModule):
             return self.stair
+        if isinstance(module, FloorModule):
+            return self.floor
         return None
 
 

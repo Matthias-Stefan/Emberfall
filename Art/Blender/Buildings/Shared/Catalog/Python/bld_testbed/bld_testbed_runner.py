@@ -10,6 +10,7 @@ from bld_architecture import Architect, ModuleAtlas, Style
 from bld_blender import MeshWriter
 from bld_module_builder import (
     DoorBuilder,
+    FloorBuilder,
     PostBuilder,
     StairBuilder,
     WallBuilder,
@@ -18,6 +19,9 @@ from bld_module_builder import (
 from bld_presets import (
     door_200x30x260,
     door_400x30x260,
+    floor_100x50x30,
+    floor_100x100x30,
+    floor_50x50x30,
     post_34x34x260,
     post_40x40x260,
     stair_200x60x40_2s_open,
@@ -84,7 +88,7 @@ class TestbedRunner:
         The catalog shows every module closed on all sides, so the flags are set here.
 
         Returns:
-            Wall row, door row, window row, post row and stair row.
+            Wall row, door row, window row, post row, stair row and floor row.
         """
         closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
 
@@ -114,7 +118,12 @@ class TestbedRunner:
             (stair_200x90x60_3s_open_rail, StairBuilder(stair_200x90x60_3s_open_rail)),
             (stair_400x60x40_2s_solid, StairBuilder(stair_400x60x40_2s_solid)),
         ]
-        return [wall_row, door_row, window_row, post_row, stair_row]
+        floor_row: CatalogRow = [
+            (floor_100x100x30, FloorBuilder(floor_100x100x30)),
+            (floor_100x50x30, FloorBuilder(floor_100x50x30)),
+            (floor_50x50x30, FloorBuilder(floor_50x50x30)),
+        ]
+        return [wall_row, door_row, window_row, post_row, stair_row, floor_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.
