@@ -17,6 +17,10 @@ from .bld_post_presets import (
     post_34x34x260,
     post_40x40x260,
 )
+from .bld_rail_presets import (
+    rail_100x8x90,
+    rail_200x8x90,
+)
 from .bld_stair_presets import (
     stair_200x60x40_2s_open,
     stair_200x60x40_2s_solid,
@@ -44,6 +48,8 @@ __all__: list[str] = [
     "floor_50x50x30",
     "post_34x34x260",
     "post_40x40x260",
+    "rail_100x8x90",
+    "rail_200x8x90",
     "stair_200x60x40_2s_open",
     "stair_200x60x40_2s_solid",
     "stair_200x90x60_3s_open_rail",

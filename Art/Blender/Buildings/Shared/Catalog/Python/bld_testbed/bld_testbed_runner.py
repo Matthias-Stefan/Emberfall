@@ -12,6 +12,7 @@ from bld_module_builder import (
     DoorBuilder,
     FloorBuilder,
     PostBuilder,
+    RailBuilder,
     StairBuilder,
     WallBuilder,
     WindowBuilder,
@@ -24,6 +25,8 @@ from bld_presets import (
     floor_100x100x30,
     post_34x34x260,
     post_40x40x260,
+    rail_100x8x90,
+    rail_200x8x90,
     stair_200x60x40_2s_open,
     stair_200x60x40_2s_solid,
     stair_200x90x60_3s_open_rail,
@@ -87,7 +90,7 @@ class TestbedRunner:
         The catalog shows every module closed on all sides, so the flags are set here.
 
         Returns:
-            Wall row, door row, window row, post row, stair row and floor row.
+            Wall row, door row, window row, post row, stair row, floor row and rail row.
         """
         closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
 
@@ -122,7 +125,11 @@ class TestbedRunner:
             (floor_100x50x30, FloorBuilder(floor_100x50x30)),
             (floor_50x50x30, FloorBuilder(floor_50x50x30)),
         ]
-        return [wall_row, door_row, window_row, post_row, stair_row, floor_row]
+        rail_row: CatalogRow = [
+            (rail_100x8x90, RailBuilder(rail_100x8x90)),
+            (rail_200x8x90, RailBuilder(rail_200x8x90)),
+        ]
+        return [wall_row, door_row, window_row, post_row, stair_row, floor_row, rail_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.

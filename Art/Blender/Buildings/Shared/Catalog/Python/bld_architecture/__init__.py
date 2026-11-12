@@ -8,6 +8,7 @@ from .bld_architect import (
     Architect,
 )
 from .bld_create_info import (
+    BalconyCreateInfo,
     BuildingCreateInfo,
     ExtensionsCreateInfo,
     FootprintCreateInfo,
@@ -15,6 +16,8 @@ from .bld_create_info import (
     OpeningCreateInfo,
 )
 from .bld_house_plan import (
+    BalconyPlan,
+    BalconyPlanner,
     CellRectangle,
     Footprint,
     FloorPlanner,
@@ -39,6 +42,9 @@ from .bld_style import (
 )
 
 __all__: list[str] = [
+    "BalconyCreateInfo",
+    "BalconyPlan",
+    "BalconyPlanner",
     "Architect",
     "BuildingCreateInfo",
     "CellRectangle",

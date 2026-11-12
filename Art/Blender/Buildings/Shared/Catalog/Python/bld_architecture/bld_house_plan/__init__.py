@@ -5,6 +5,7 @@ __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 from .bld_house_plan import (
+    BalconyPlan,
     FoundationPlan,
     HousePlan,
     ModulePlacement,
@@ -36,11 +37,16 @@ from .bld_steps.bld_step_3_foundation import (
 from .bld_steps.bld_step_6_stairs import (
     StairPlacer,
 )
-from .bld_steps.bld_step_7_floor import (
+from .bld_steps.bld_step_7_balconies import (
+    BalconyPlanner,
+)
+from .bld_steps.bld_step_8_floor import (
     FloorPlanner,
 )
 
 __all__: list[str] = [
+    "BalconyPlan",
+    "BalconyPlanner",
     "CellRectangle",
     "CornerKind",
     "Footprint",

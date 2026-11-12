@@ -47,6 +47,40 @@ class BaseModuleBuilder(metaclass=ABCMeta):
         """
 
     @staticmethod
+    def _add_box(
+        bm: bmesh.types.BMesh,
+        minimum: tuple[float, float, float],
+        maximum: tuple[float, float, float],
+    ) -> None:
+        """Adds one closed box with outward faces.
+
+        Args:
+            bm: BMesh to add the box to.
+            minimum: Corner with the smallest coordinates in m.
+            maximum: Corner with the largest coordinates in m.
+
+        Returns:
+            None.
+        """
+        created: dict = bmesh.ops.create_cube(bm, size=1.0)
+        corners: list[bmesh.types.BMVert] = created["verts"]
+        bmesh.ops.scale(
+            bm,
+            vec=(maximum[0] - minimum[0], maximum[1] - minimum[1], maximum[2] - minimum[2]),
+            verts=corners,
+        )
+        bmesh.ops.translate(
+            bm,
+            vec=(
+                (minimum[0] + maximum[0]) * 0.5,
+                (minimum[1] + maximum[1]) * 0.5,
+                (minimum[2] + maximum[2]) * 0.5,
+            ),
+            verts=corners,
+        )
+        return None
+
+    @staticmethod
     def _add_face(bm: bmesh.types.BMesh, points: list[tuple[float, float, float]]) -> None:
         """Adds one face from loose points, counter-clockwise seen from outside.
 

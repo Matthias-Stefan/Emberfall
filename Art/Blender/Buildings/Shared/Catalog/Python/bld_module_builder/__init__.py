@@ -16,6 +16,9 @@ from .bld_floor_builder import (
 from .bld_post_builder import (
     PostBuilder
 )
+from .bld_rail_builder import (
+    RailBuilder
+)
 from .bld_stair_builder import (
     StairBuilder
 )
@@ -31,6 +34,7 @@ __all__: list[str] = [
     "DoorBuilder",
     "FloorBuilder",
     "PostBuilder",
+    "RailBuilder",
     "StairBuilder",
     "WallBuilder",
     "WindowBuilder",

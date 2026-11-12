@@ -92,7 +92,7 @@ class HouseGridLayout:
             for column_index, seed in enumerate(seeds):
                 plan: HousePlan = self._architect.design(replace(base_info, seed=seed))
                 footprint: Footprint = plan.footprint
-                builder: FootprintBuilder = FootprintBuilder(footprint)
+                builder: FootprintBuilder = FootprintBuilder(footprint, plan.balconies)
                 writers: HouseWriters = HouseWriters(
                     self._houses_collection, f"house_r{row_index}_s{seed}", self._cache
                 )
@@ -115,6 +115,16 @@ class HouseGridLayout:
                     extension_object.location.x = house_object.location.x
                     extension_object.location.y = house_object.location.y
                     placed_objects.append(extension_object)
+
+                for balcony_index in range(len(plan.balconies)):
+                    balcony_object: bpy.types.Object = writers.writer_for(HousePart.FOOTPRINT).write(
+                        f"house_r{row_index}_s{seed}_balcony{balcony_index}",
+                        builder.build_balcony(balcony_index),
+                        house_colors.balcony,
+                    )
+                    balcony_object.location.x = house_object.location.x
+                    balcony_object.location.y = house_object.location.y
+                    placed_objects.append(balcony_object)
 
                 if plan.foundation is not None:
                     foundation_builder: FoundationBuilder = FoundationBuilder(plan.foundation)
@@ -164,6 +174,7 @@ class HouseGridLayout:
                     f"houses: row {row_index} seed {seed} ({kind}) "
                     f"main {self._size_of(footprint)}, "
                     f"{len(footprint.extension_cells)} extensions, "
+                    f"{len(plan.balconies)} balconies, "
                     f"{total_cells} cells, {placement_count} placements"
                 )
 

@@ -4,6 +4,9 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_balcony_create_info import (
+    BalconyCreateInfo,
+)
 from .bld_building_create_info import (
     BuildingCreateInfo,
 )
@@ -21,6 +24,7 @@ from .bld_opening_create_info import (
 )
 
 __all__: list[str] = [
+    "BalconyCreateInfo",
     "BuildingCreateInfo",
     "ExtensionsCreateInfo",
     "FootprintCreateInfo",

@@ -10,6 +10,7 @@ from bld_modules import DoorModule
 
 from .bld_create_info import BuildingCreateInfo
 from .bld_house_plan import (
+    BalconyPlanner,
     Footprint,
     FloorPlanner,
     FootprintDesigner,
@@ -27,7 +28,7 @@ from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in seven steps: footprint, outline, foundation, walls, openings, stairs, floor."""
+    """Designs building plans in eight steps: footprint, outline, foundation, walls, openings, stairs, balconies, floor."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.
@@ -45,6 +46,7 @@ class Architect:
         self._opening_placer: OpeningPlacer = OpeningPlacer(style.atlas)
         self._foundation_planner: FoundationPlanner = FoundationPlanner()
         self._stair_placer: StairPlacer = StairPlacer(style.atlas)
+        self._balcony_planner: BalconyPlanner = BalconyPlanner()
         self._floor_planner: FloorPlanner = FloorPlanner(style.atlas)
 
     def design(self, create_info: BuildingCreateInfo) -> HousePlan:
@@ -98,9 +100,16 @@ class Architect:
         stair_rings: tuple[ModuleRing, ...] = self._stair_placer.place(
             lifted_rings, foundation, stair_random
         )
+
+        # own random stream again, balconies only replace stairs, they never move walls or openings
+        balcony_random: random.Random = random.Random(f"{create_info.seed}:balconies")
+        balcony_rings, balconies = self._balcony_planner.plan(
+            stair_rings, outlines, footprint, foundation, create_info.balconies, balcony_random
+        )
         return HousePlan(
             footprint=footprint,
-            rings=stair_rings,
+            rings=balcony_rings,
+            balconies=balconies,
             foundation=foundation,
             floor=self._floor_planner.plan(footprint, foundation),
         )

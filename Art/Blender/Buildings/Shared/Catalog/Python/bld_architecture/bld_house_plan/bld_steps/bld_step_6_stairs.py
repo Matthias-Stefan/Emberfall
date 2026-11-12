@@ -67,10 +67,10 @@ class StairPlacer:
                 stair: ModulePlacement = self._stair_in_front_of(
                     placement, random_source.choice(candidates), foundation
                 )
-                stair_rectangle: Rectangle = self._rectangle_of(
+                stair_rectangle: Rectangle = StairPlacer.rectangle_of(
                     stair, stair.module.width, stair.module.depth
                 )
-                if any(self._overlaps(stair_rectangle, other) for other in occupied):
+                if any(StairPlacer.overlaps(stair_rectangle, other) for other in occupied):
                     continue
                 occupied.append(stair_rectangle)
                 stairs.append(stair)
@@ -100,11 +100,11 @@ class StairPlacer:
         if not candidates:
             return False
         stair: ModulePlacement = self._stair_in_front_of(wall, candidates[0], foundation)
-        stair_rectangle: Rectangle = self._rectangle_of(
+        stair_rectangle: Rectangle = StairPlacer.rectangle_of(
             stair, stair.module.width, stair.module.depth
         )
         return not any(
-            self._overlaps(stair_rectangle, other)
+            StairPlacer.overlaps(stair_rectangle, other)
             for other in self._band_rectangles(rings, foundation, wall)
         )
 
@@ -126,7 +126,7 @@ class StairPlacer:
         """
         band_depth: float = foundation.wall_depth + 2.0 * foundation.overhang
         return [
-            self._rectangle_of(
+            StairPlacer.rectangle_of(
                 placement,
                 # a post is thicker than a wall but still inside the band, so it counts as band depth
                 band_depth
@@ -181,7 +181,7 @@ class StairPlacer:
         return ModulePlacement(stair, position, door.rotation_steps, 0.0)
 
     @staticmethod
-    def _rectangle_of(placement: ModulePlacement, width: float, depth: float) -> Rectangle:
+    def rectangle_of(placement: ModulePlacement, width: float, depth: float) -> Rectangle:
         """Computes the area of a placed module seen from above.
 
         Args:
@@ -204,7 +204,7 @@ class StairPlacer:
         )
 
     @staticmethod
-    def _overlaps(first: Rectangle, second: Rectangle) -> bool:
+    def overlaps(first: Rectangle, second: Rectangle) -> bool:
         """Tests whether two areas share space, touching edges do not count.
 
         Args:

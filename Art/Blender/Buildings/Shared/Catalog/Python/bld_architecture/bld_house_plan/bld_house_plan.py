@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from bld_modules import BaseModule
 
-from .bld_steps.bld_step_1_footprint import Footprint
+from .bld_steps.bld_step_1_footprint import Footprint, Side
 from .bld_steps.bld_step_2_outline import OutlineRing
 
 
@@ -48,6 +48,18 @@ class FoundationPlan:
 
 
 @dataclass(frozen=True)
+class BalconyPlan:
+    """Railed platform at foundation height on grid cells outside the building, in front of its doors."""
+
+    cells: frozenset[tuple[int, int]]
+    """Grid cells the platform covers, none of them belongs to the footprint."""
+    doors: tuple[ModulePlacement, ...]
+    """Doors the balcony leads to in walking order, their elevation is the platform height."""
+    outward: Side
+    """Side of the building the balcony lies on."""
+
+
+@dataclass(frozen=True)
 class HousePlan:
     """Footprint plus everything placed on its outer outline."""
 
@@ -59,3 +71,5 @@ class HousePlan:
     """Foundation under the rings, None if the house stands on the ground."""
     floor: tuple[ModulePlacement, ...] = ()
     """Floor slabs of the ground level, empty if the house stands on the ground."""
+    balconies: tuple[BalconyPlan, ...] = ()
+    """Balconies in front of the doors, empty if there are none."""

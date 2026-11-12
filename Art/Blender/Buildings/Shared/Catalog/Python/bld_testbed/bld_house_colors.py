@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from bld_modules import BaseSlotModule, DoorModule, FloorModule, PostModule, StairModule, WindowModule
+from bld_modules import BaseSlotModule, DoorModule, FloorModule, PostModule, RailModule, StairModule, WindowModule
 
 Color = tuple[float, float, float, float]
 
@@ -19,6 +19,8 @@ class HouseColors:
     """Color of the main building, pastel green."""
     extension: Color = (0.95, 0.60, 0.60, 1.0)
     """Color of all extensions, pastel red."""
+    balcony: Color = (0.45, 0.55, 0.98, 1.0)
+    """Color of the balcony cells in the footprint, saturated blue, apart from the door blue."""
     door: Color = (0.60, 0.75, 0.95, 1.0)
     """Color of all door modules, pastel blue."""
     window: Color = (0.98, 0.92, 0.60, 1.0)
@@ -31,6 +33,8 @@ class HouseColors:
     """Color of the foundation, pastel stone grey."""
     floor: Color = (0.86, 0.78, 0.62, 1.0)
     """Color of all floor modules, pastel wood."""
+    rail: Color = (0.62, 0.88, 0.84, 1.0)
+    """Color of all rail modules, pastel mint."""
 
     def __post_init__(self) -> None:
         """Validates that every color has four channels in range.
@@ -41,7 +45,7 @@ class HouseColors:
         Returns:
             None.
         """
-        for color in (self.main, self.extension, self.door, self.window, self.post, self.stair, self.foundation, self.floor):
+        for color in (self.main, self.extension, self.balcony, self.door, self.window, self.post, self.stair, self.foundation, self.floor, self.rail):
             if len(color) != 4 or not all(0.0 <= channel <= 1.0 for channel in color):
                 raise ValueError(f"Invalid color {color}, expected 4 channels in 0..1")
 
@@ -64,6 +68,8 @@ class HouseColors:
             return self.stair
         if isinstance(module, FloorModule):
             return self.floor
+        if isinstance(module, RailModule):
+            return self.rail
         return None
 
 

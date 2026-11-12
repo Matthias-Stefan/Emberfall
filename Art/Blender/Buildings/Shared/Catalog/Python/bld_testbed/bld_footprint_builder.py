@@ -1,28 +1,35 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Builds flat floor quads from the cells of a footprint."""
+"""Builds flat floor quads from the cells of a footprint and its balconies."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 import bmesh
 
-from bld_architecture import Footprint
+from bld_architecture import BalconyPlan, Footprint
 
 
 class FootprintBuilder:
-    """Builds flat floor quads from the cells of a footprint, one quad per cell."""
+    """Builds flat floor quads from the cells of a footprint and its balconies, one quad per cell."""
 
-    def __init__(self, footprint: Footprint, floor_offset: float = 0.01) -> None:
+    def __init__(
+        self,
+        footprint: Footprint,
+        balconies: tuple[BalconyPlan, ...],
+        floor_offset: float = 0.01,
+    ) -> None:
         """Creates a footprint builder.
 
         Args:
             footprint: Footprint to display.
+            balconies: Balconies to display next to it.
             floor_offset: Height of the quads above Z = 0 in m, avoids z-fighting.
 
         Returns:
             None.
         """
         self._footprint: Footprint = footprint
+        self._balconies: tuple[BalconyPlan, ...] = balconies
         self._floor_offset: float = floor_offset
 
     def build_main(self) -> bmesh.types.BMesh:
@@ -45,6 +52,18 @@ class FootprintBuilder:
             The caller owns it and must call free() on it.
         """
         return self._build_cells(self._footprint.extension_cells[extension_index])
+
+    def build_balcony(self, balcony_index: int) -> bmesh.types.BMesh:
+        """Builds the quads of one balcony.
+
+        Args:
+            balcony_index: Index of the balcony in door order.
+
+        Returns:
+            A new BMesh in m, one cell is 1 m x 1 m.
+            The caller owns it and must call free() on it.
+        """
+        return self._build_cells(self._balconies[balcony_index].cells)
 
     def _build_cells(self, cells: frozenset[tuple[int, int]]) -> bmesh.types.BMesh:
         """Builds one quad per cell, facing up.
