@@ -12,6 +12,7 @@ import bpy
 
 from bld_architecture import Architect, Footprint, HousePlan
 from bld_blender import MeshWriter
+from bld_house_builder import FoundationBuilder
 from bld_module_builder import (
     BaseModuleBuilder,
     DoorBuilder,
@@ -100,6 +101,18 @@ class HouseGridLayout:
                     extension_object.location.y = house_object.location.y
                     placed_objects.append(extension_object)
 
+                if plan.foundation is not None:
+                    foundation_builder: FoundationBuilder = FoundationBuilder(plan.foundation)
+                    for ring_index in range(foundation_builder.ring_count):
+                        foundation_object: bpy.types.Object = self._writer.write(
+                            f"house_r{row_index}_s{seed}_foundation{ring_index}",
+                            foundation_builder.build_ring(ring_index),
+                            footprint_colors.foundation,
+                        )
+                        foundation_object.location.x = house_object.location.x
+                        foundation_object.location.y = house_object.location.y
+                        placed_objects.append(foundation_object)
+
                 # posts and walls, rotated so the module front (-Y) faces outward
                 placement_count: int = 0
                 for ring in plan.rings:
@@ -112,6 +125,7 @@ class HouseGridLayout:
                         )
                         module_object.location.x = house_object.location.x + placement.position[0]
                         module_object.location.y = house_object.location.y + placement.position[1]
+                        module_object.location.z = placement.elevation
                         module_object.rotation_euler.z = placement.rotation_steps * math.pi * 0.5
                         placed_objects.append(module_object)
                         placement_count += 1

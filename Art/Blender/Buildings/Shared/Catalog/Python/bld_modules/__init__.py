@@ -13,11 +13,14 @@ from .bld_wall_modules import (
     DoorModule,
     OpeningWallModule,
     PostModule,
-    StairModule,
     WallModule,
     WindowModule,
 
     TOLERANCE,
+)
+
+from .bld_stair_modules import (
+    StairModule,
 )
 
 __all__: list[str] = [

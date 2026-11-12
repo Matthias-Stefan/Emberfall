@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from bld_modules import BaseModule
 
 from .bld_steps.bld_step_1_footprint import Footprint
+from .bld_steps.bld_step_2_outline import OutlineRing
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class ModulePlacement:
     """Slot center in m, on the wall midline."""
     rotation_steps: int
     """Quarter turns counter-clockwise around Z, 0 means the front (-Y) faces south."""
+    elevation: float = 0.0
+    """Height of the module floor above the ground in m, the foundation height for house modules."""
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,20 @@ class ModuleRing:
 
 
 @dataclass(frozen=True)
+class FoundationPlan:
+    """Stone band under the outline rings that lifts the house off the ground."""
+
+    outlines: tuple[OutlineRing, ...]
+    """Outline rings the band follows, wall midline."""
+    height: float
+    """Height of the band in m."""
+    overhang: float
+    """How far the band sticks out past the wall faces in m."""
+    wall_depth: float
+    """Wall thickness in m, the band is centered on the wall midline."""
+
+
+@dataclass(frozen=True)
 class HousePlan:
     """Footprint plus everything placed on its outer outline."""
 
@@ -38,3 +55,5 @@ class HousePlan:
     """Cells the plan was derived from."""
     rings: tuple[ModuleRing, ...]
     """One ring per closed outer outline."""
+    foundation: FoundationPlan | None = None
+    """Foundation under the rings, None if the house stands on the ground."""

@@ -12,17 +12,20 @@ from .bld_create_info import BuildingCreateInfo
 from .bld_house_plan import (
     Footprint,
     FootprintDesigner,
+    FoundationPlan,
+    FoundationPlanner,
     HousePlan,
     ModuleRing,
     OpeningPlacer,
     OutlineReader,
+    OutlineRing,
     WallFiller,
 )
 from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in four steps: footprint, outline, walls, openings."""
+    """Designs building plans in five steps: footprint, outline, walls, openings, foundation."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.
@@ -38,6 +41,7 @@ class Architect:
         self._outline_reader: OutlineReader = OutlineReader()
         self._wall_filler: WallFiller = WallFiller(style.atlas)
         self._opening_placer: OpeningPlacer = OpeningPlacer(style.atlas)
+        self._foundation_planner: FoundationPlanner = FoundationPlanner()
 
     def design(self, create_info: BuildingCreateInfo) -> HousePlan:
         """Designs one building.
@@ -50,11 +54,12 @@ class Architect:
         """
         footprint: Footprint = self._footprint_designer.design(create_info)
 
+        outlines: tuple[OutlineRing, ...] = self._outline_reader.read(footprint)
+
         # own random stream, so changes to the walls never move the footprint of a seed
         wall_random: random.Random = random.Random(f"{create_info.seed}:walls")
         filled_rings: tuple[ModuleRing, ...] = tuple(
-            self._wall_filler.fill(ring, wall_random)
-            for ring in self._outline_reader.read(footprint)
+            self._wall_filler.fill(ring, wall_random) for ring in outlines
         )
 
         # own random stream again, so openings never move the walls of a seed
@@ -70,4 +75,11 @@ class Architect:
                 for placement in ring_with_openings.placements
             )
             rings.append(ring_with_openings)
-        return HousePlan(footprint=footprint, rings=tuple(rings))
+
+        foundation: FoundationPlan | None = self._foundation_planner.plan(
+            outlines, create_info.foundation, self._style.wall_depth
+        )
+        lifted_rings: tuple[ModuleRing, ...] = tuple(
+            self._foundation_planner.lift(ring, foundation) for ring in rings
+        )
+        return HousePlan(footprint=footprint, rings=lifted_rings, foundation=foundation)

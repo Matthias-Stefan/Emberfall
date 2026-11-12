@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from .bld_extensions_create_info import ExtensionsCreateInfo
 from .bld_footprint_create_info import FootprintCreateInfo
+from .bld_foundation_create_info import FoundationCreateInfo
 from .bld_opening_create_info import OpeningCreateInfo
 
 
@@ -24,6 +25,8 @@ class BuildingCreateInfo:
     """Rules for the extensions."""
     openings: OpeningCreateInfo = field(default_factory=OpeningCreateInfo)
     """Rules for doors and windows."""
+    foundation: FoundationCreateInfo = field(default_factory=FoundationCreateInfo)
+    """Rules for the foundation."""
 
     @property
     def extension_factor(self) -> float:

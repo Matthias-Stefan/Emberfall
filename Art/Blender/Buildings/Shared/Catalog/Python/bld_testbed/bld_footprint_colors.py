@@ -27,6 +27,8 @@ class FootprintColors:
     """Color of all post modules, pastel lilac."""
     stair: Color = (0.98, 0.76, 0.56, 1.0)
     """Color of all stair modules, pastel orange."""
+    foundation: Color = (0.78, 0.76, 0.72, 1.0)
+    """Color of the foundation, pastel stone grey."""
 
     def __post_init__(self) -> None:
         """Validates that every color has four channels in range.
@@ -37,7 +39,7 @@ class FootprintColors:
         Returns:
             None.
         """
-        for color in (self.main, self.extension, self.door, self.window, self.post, self.stair):
+        for color in (self.main, self.extension, self.door, self.window, self.post, self.stair, self.foundation):
             if len(color) != 4 or not all(0.0 <= channel <= 1.0 for channel in color):
                 raise ValueError(f"Invalid color {color}, expected 4 channels in 0..1")
 

@@ -10,6 +10,9 @@ from .bld_building_create_info import (
 from .bld_extensions_create_info import (
     ExtensionsCreateInfo,
 )
+from .bld_foundation_create_info import (
+    FoundationCreateInfo,
+)
 from .bld_footprint_create_info import (
     FootprintCreateInfo,
 )
@@ -21,5 +24,6 @@ __all__: list[str] = [
     "BuildingCreateInfo",
     "ExtensionsCreateInfo",
     "FootprintCreateInfo",
+    "FoundationCreateInfo",
     "OpeningCreateInfo",
 ]
