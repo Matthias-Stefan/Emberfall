@@ -57,6 +57,24 @@ class BalconyPlan:
     """Doors the balcony leads to in walking order, their elevation is the platform height."""
     outward: Side
     """Side of the building the balcony lies on."""
+    stairs: tuple[ModulePlacement, ...]
+    """Stairs from the ground up to the balcony, side by side over the whole width of its front edge."""
+
+
+@dataclass(frozen=True)
+class LevelPlan:
+    """One level above the ground floor: its walls and the floor slabs it stands on."""
+
+    elevation: float
+    """Height of the wall bottoms above the ground in m."""
+    rings: tuple[ModuleRing, ...]
+    """One ring per closed outer outline, posts, walls and openings."""
+    floor: tuple[ModulePlacement, ...]
+    """Floor slabs the walls of the level stand on, without the cells of the stair hole."""
+    stairs: tuple[ModulePlacement, ...] = ()
+    """Interior stairs that lead up to this level, they start on the floor of the level below."""
+    hole: frozenset[tuple[int, int]] = frozenset()
+    """Cells without a floor slab where the stair comes through."""
 
 
 @dataclass(frozen=True)
@@ -73,3 +91,5 @@ class HousePlan:
     """Floor slabs of the ground level, empty if the house stands on the ground."""
     balconies: tuple[BalconyPlan, ...] = ()
     """Balconies in front of the doors, empty if there are none."""
+    levels: tuple[LevelPlan, ...] = ()
+    """Levels above the ground floor from bottom to top, empty for a one story house."""

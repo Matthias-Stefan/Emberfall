@@ -30,13 +30,13 @@ class MeshWriter:
         """
         self._collection: bpy.types.Collection = collection
         self._cache: SharedMeshCache = cache if cache is not None else SharedMeshCache()
-        return None
 
     def write(
         self,
         name: str,
         bm: bmesh.types.BMesh,
         color: tuple[float, float, float, float] | None = None,
+        materials: list[bpy.types.Material] | None = None,
     ) -> bpy.types.Object:
         """Writes a BMesh as a new object and frees it.
 
@@ -44,11 +44,13 @@ class MeshWriter:
             name: Name for the object and its mesh.
             bm: Geometry to write, freed by this call, do not use it afterwards.
             color: Viewport object color as RGBA in 0..1, None keeps the default.
+            materials: Materials for the mesh slots in slot order, the face material indices
+                refer to them, None gives the mesh no slots.
 
         Returns:
             The newly created object.
         """
-        return self._create_object(name, self._create_mesh(name, bm), color)
+        return self._create_object(name, self._create_mesh(name, bm, materials), color)
 
     def write_shared(
         self,
@@ -76,12 +78,17 @@ class MeshWriter:
         return self._create_object(name, self._cache.get_or_create(shared_key, build), color)
 
     @staticmethod
-    def _create_mesh(name: str, bm: bmesh.types.BMesh) -> bpy.types.Mesh:
+    def _create_mesh(
+        name: str,
+        bm: bmesh.types.BMesh,
+        materials: list[bpy.types.Material] | None = None,
+    ) -> bpy.types.Mesh:
         """Copies a BMesh into a new mesh and frees it.
 
         Args:
             name is the name of the mesh.
             bm is the geometry, freed by this call, do not use it afterwards.
+            materials are the materials for the mesh slots, None gives the mesh no slots.
 
         Returns:
             The new mesh.
@@ -91,6 +98,8 @@ class MeshWriter:
             bm.to_mesh(mesh)
         finally:
             bm.free()
+        for material in materials or ():
+            mesh.materials.append(material)
         return mesh
 
     def _create_object(

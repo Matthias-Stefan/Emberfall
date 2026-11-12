@@ -4,10 +4,14 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_balcony_block_builder import (
+    BalconyBlockBuilder,
+)
 from .bld_foundation_builder import (
     FoundationBuilder,
 )
 
 __all__: list[str] = [
+    "BalconyBlockBuilder",
     "FoundationBuilder",
 ]

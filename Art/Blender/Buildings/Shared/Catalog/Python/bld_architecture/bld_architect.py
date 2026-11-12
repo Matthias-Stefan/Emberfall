@@ -17,6 +17,8 @@ from .bld_house_plan import (
     FoundationPlan,
     FoundationPlanner,
     HousePlan,
+    LevelPlanner,
+    LevelStairPlacer,
     ModuleRing,
     OpeningPlacer,
     OutlineReader,
@@ -28,7 +30,7 @@ from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in eight steps: footprint, outline, foundation, walls, openings, stairs, balconies, floor."""
+    """Designs building plans in nine steps: footprint, outline, foundation, walls, openings, stairs, balconies, floor, levels."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.
@@ -46,8 +48,14 @@ class Architect:
         self._opening_placer: OpeningPlacer = OpeningPlacer(style.atlas)
         self._foundation_planner: FoundationPlanner = FoundationPlanner()
         self._stair_placer: StairPlacer = StairPlacer(style.atlas)
-        self._balcony_planner: BalconyPlanner = BalconyPlanner()
+        self._balcony_planner: BalconyPlanner = BalconyPlanner(style.atlas)
         self._floor_planner: FloorPlanner = FloorPlanner(style.atlas)
+        self._level_planner: LevelPlanner = LevelPlanner(
+            self._wall_filler,
+            self._opening_placer,
+            self._floor_planner,
+            LevelStairPlacer(style.atlas),
+        )
 
     def design(self, create_info: BuildingCreateInfo) -> HousePlan:
         """Designs one building.
@@ -112,4 +120,14 @@ class Architect:
             balconies=balconies,
             foundation=foundation,
             floor=self._floor_planner.plan(footprint, foundation),
+            levels=self._level_planner.plan(
+                create_info.levels,
+                create_info.openings,
+                outlines,
+                balcony_rings,
+                footprint,
+                foundation.height if foundation is not None else 0.0,
+                self._style.wall_height,
+                create_info.seed,
+            ),
         )

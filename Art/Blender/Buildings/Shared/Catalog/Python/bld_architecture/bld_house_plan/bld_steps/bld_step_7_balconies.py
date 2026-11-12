@@ -10,6 +10,7 @@ import random
 from bld_modules import TOLERANCE, DoorModule, StairModule
 
 from ...bld_create_info import BalconyCreateInfo
+from ...bld_style import ModuleAtlas
 from ..bld_house_plan import BalconyPlan, FoundationPlan, ModulePlacement, ModuleRing
 from .bld_step_1_footprint import Footprint, Side
 from .bld_step_2_outline import OutlineRing, OutlineSegment
@@ -23,7 +24,19 @@ _OUTWARD: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 
 class BalconyPlanner:
-    """Gives some doors a balcony on free grid cells in place of their stairs."""
+    """Gives some doors a balcony on free grid cells with a stair of its own in place of their stairs."""
+
+    def __init__(self, atlas: ModuleAtlas) -> None:
+        """Creates a balcony planner.
+
+        Args:
+            atlas: Stairs the planner may choose from for the balconies.
+
+        Returns:
+            None.
+        """
+        self._atlas: ModuleAtlas = atlas
+        return None
 
     def plan(
         self,
@@ -46,8 +59,8 @@ class BalconyPlanner:
 
         Returns:
             The rings without the stairs of balcony doors, and the balconies in door order.
-            Doors close together on one wall share one balcony. A balcony shrinks until it fits,
-            doors where not even the smallest one fits keep their stairs.
+            Doors close together on one wall share one balcony. A balcony shrinks until it and a stair
+            at one of its free edges fit, doors where not even the smallest one fits keep their stairs.
         """
         if foundation is None or not create_info.enabled:
             return rings, ()
@@ -56,6 +69,8 @@ class BalconyPlanner:
         balcony_cells: set[Cell] = set()
         balconies: list[BalconyPlan] = []
         replaced_stairs: set[ModulePlacement] = set()
+        balcony_stairs: dict[ModulePlacement, tuple[ModulePlacement, ...]] = {}
+        balcony_stair_areas: list[Rectangle] = []
 
         for group, segment in self._door_groups(rings, outlines, create_info.merge_door_gap):
             # every roll is taken for every group, so one group never moves the balconies of others
@@ -63,6 +78,7 @@ class BalconyPlanner:
             depth: int = random_source.randint(create_info.min_depth, create_info.max_depth)
             extra_before: int = random_source.randint(0, create_info.max_extra_width)
             extra_after: int = random_source.randint(0, create_info.max_extra_width)
+            stair_roll: float = random_source.random()
             if not wanted:
                 continue
 
@@ -77,7 +93,8 @@ class BalconyPlanner:
                 for stair in other_ring.placements
                 if isinstance(stair.module, StairModule) and stair not in own_stairs
             ]
-            cells: frozenset[Cell] | None = self._fit_cells(
+            foreign_stairs.extend(balcony_stair_areas)
+            fitted: tuple[frozenset[Cell], tuple[ModulePlacement, ...]] | None = self._fit_balcony(
                 group,
                 segment,
                 depth,
@@ -87,17 +104,36 @@ class BalconyPlanner:
                 built_cells,
                 balcony_cells,
                 foreign_stairs,
+                foundation,
+                stair_roll,
             )
-            if cells is None:
+            if fitted is None:
                 continue
+            cells, stairs = fitted
             balcony_cells |= cells
-            balconies.append(
-                BalconyPlan(cells, tuple(group), _OUTWARD_SIDES[group[0].rotation_steps % 4])
+            balcony_stair_areas.extend(
+                StairPlacer.rectangle_of(stair, stair.module.width, stair.module.depth)
+                for stair in stairs
             )
+            balconies.append(
+                BalconyPlan(cells, tuple(group), _OUTWARD_SIDES[group[0].rotation_steps % 4], stairs)
+            )
+            balcony_stairs[group[0]] = stairs
             replaced_stairs.update(own_stairs)
 
+        # the stair of a balcony walks with the ring of the first door of the balcony
         stripped_rings: tuple[ModuleRing, ...] = tuple(
-            ModuleRing(tuple(p for p in ring.placements if p not in replaced_stairs))
+            ModuleRing(
+                (
+                    *(p for p in ring.placements if p not in replaced_stairs),
+                    *(
+                        stair
+                        for door, stairs in balcony_stairs.items()
+                        if door in ring.placements
+                        for stair in stairs
+                    ),
+                )
+            )
             for ring in rings
         )
         return stripped_rings, tuple(balconies)
@@ -185,7 +221,7 @@ class BalconyPlanner:
                     return ring_index, segment_index
         return None
 
-    def _fit_cells(
+    def _fit_balcony(
         self,
         doors: list[ModulePlacement],
         segment: OutlineSegment,
@@ -196,8 +232,10 @@ class BalconyPlanner:
         built_cells: frozenset[Cell],
         balcony_cells: set[Cell],
         foreign_stairs: list[Rectangle],
-    ) -> frozenset[Cell] | None:
-        """Shrinks a balcony step by step until its cells are free.
+        foundation: FoundationPlan,
+        stair_roll: float,
+    ) -> tuple[frozenset[Cell], ModulePlacement] | None:
+        """Shrinks a balcony step by step until its cells and a stair at one of its edges are free.
 
         Args:
             doors are the doors the balcony leads to.
@@ -208,15 +246,27 @@ class BalconyPlanner:
             min_depth is the smallest allowed depth in cells.
             built_cells are the cells of the footprint.
             balcony_cells are the cells of the balconies planned so far.
-            foreign_stairs are the areas of the stairs of other doors in m.
+            foreign_stairs are the areas of the stairs of other doors and balconies in m.
+            foundation is the foundation, its height is the height the stairs climb.
+            stair_roll is a random value in 0..1 that picks one of the possible stair variants.
 
         Returns:
-            The free cells, None if even the smallest balcony does not fit.
+            The free cells and the stairs over the whole front edge, None if even the smallest balcony
+            has no room for them.
         """
         while True:
             cells: frozenset[Cell] = self._cells_of(doors, segment, depth, extra_before, extra_after)
             if self._is_free(cells, built_cells, balcony_cells, foreign_stairs):
-                return cells
+                variants: list[tuple[ModulePlacement, ...]] = self._front_stairs(
+                    cells,
+                    _OUTWARD[doors[0].rotation_steps % 4],
+                    built_cells,
+                    balcony_cells,
+                    foreign_stairs,
+                    foundation,
+                )
+                if variants:
+                    return cells, variants[min(int(stair_roll * len(variants)), len(variants) - 1)]
             # width first, a deeper balcony in front of the door is worth more than a wide one
             if extra_before > 0 or extra_after > 0:
                 extra_before = max(0, extra_before - 1)
@@ -225,6 +275,138 @@ class BalconyPlanner:
                 depth -= 1
             else:
                 return None
+
+    def _front_stairs(
+        self,
+        cells: frozenset[Cell],
+        direction: tuple[int, int],
+        built_cells: frozenset[Cell],
+        balcony_cells: set[Cell],
+        foreign_stairs: list[Rectangle],
+        foundation: FoundationPlan,
+    ) -> list[tuple[ModulePlacement, ...]]:
+        """Lists the ways to cover the whole front edge of a balcony with stairs of one variant.
+
+        Args:
+            cells are the cells of the balcony, a full rectangle.
+            direction is the outward unit direction of the balcony, its front edge faces it.
+            built_cells are the cells of the footprint.
+            balcony_cells are the cells of the balconies planned so far.
+            foreign_stairs are the areas of the stairs of other doors and balconies in m.
+            foundation is the foundation, provides the stair height and the reach of its bands.
+
+        Returns:
+            One entry per stair variant that tiles the edge without collisions, in a fixed order.
+            Each entry holds the ground stairs side by side with the top step against the edge.
+        """
+        along_x: bool = direction[0] == 0
+        if along_x:
+            span_start: int = min(cell_x for cell_x, _ in cells)
+            span_end: int = max(cell_x for cell_x, _ in cells) + 1
+            edge_line: float = float(
+                max(cell_y for _, cell_y in cells) + 1 if direction[1] > 0 else min(cell_y for _, cell_y in cells)
+            )
+        else:
+            span_start = min(cell_y for _, cell_y in cells)
+            span_end = max(cell_y for _, cell_y in cells) + 1
+            edge_line = float(
+                max(cell_x for cell_x, _ in cells) + 1 if direction[0] > 0 else min(cell_x for cell_x, _ in cells)
+            )
+        rotation_steps: int = _OUTWARD.index(direction)
+        band_reach: float = foundation.wall_depth * 0.5 + foundation.overhang
+
+        # one variant is all stairs with the same look, they differ only in width
+        variants: dict[tuple[bool, int, float], dict[int, StairModule]] = {}
+        for module in self._atlas.modules_of(StairModule):
+            if (
+                isinstance(module, StairModule)
+                and not module.has_handrail
+                and abs(module.height - foundation.height) <= TOLERANCE
+            ):
+                key: tuple[bool, int, float] = (module.solid, module.step_count, module.depth)
+                variants.setdefault(key, {})[round(module.width)] = module
+
+        result: list[tuple[ModulePlacement, ...]] = []
+        for key in sorted(variants):
+            widths: list[int] = self._tile(span_end - span_start, sorted(variants[key], reverse=True))
+            if not widths:
+                continue
+            stairs: list[ModulePlacement] = []
+            start: float = float(span_start)
+            for width in widths:
+                module = variants[key][width]
+                center_along: float = start + width * 0.5
+                away: float = edge_line + (direction[1] if along_x else direction[0]) * module.depth * 0.5
+                position: tuple[float, float] = (
+                    (center_along, away) if along_x else (away, center_along)
+                )
+                stairs.append(ModulePlacement(module, position, rotation_steps, 0.0))
+                start += width
+            if not any(
+                self._stair_collides(
+                    StairPlacer.rectangle_of(stair, stair.module.width, stair.module.depth),
+                    built_cells,
+                    balcony_cells,
+                    foreign_stairs,
+                    band_reach,
+                )
+                for stair in stairs
+            ):
+                result.append(tuple(stairs))
+        return result
+
+    @staticmethod
+    def _tile(length: int, widths: list[int]) -> list[int]:
+        """Covers a length with the fewest stairs.
+
+        Args:
+            length is the length to cover in whole m.
+            widths are the available stair widths in whole m, widest first.
+
+        Returns:
+            Widths in walking order that add up to the length, empty if no mix of widths does.
+        """
+        best: list[list[int] | None] = [[]] + [None] * length
+        for covered in range(1, length + 1):
+            for width in widths:
+                rest: list[int] | None = best[covered - width] if width <= covered else None
+                if rest is not None and (best[covered] is None or len(rest) + 1 < len(best[covered])):
+                    best[covered] = [*rest, width]
+        return best[length] or []
+
+    @staticmethod
+    def _stair_collides(
+        area: Rectangle,
+        built_cells: frozenset[Cell],
+        balcony_cells: set[Cell],
+        foreign_stairs: list[Rectangle],
+        band_reach: float,
+    ) -> bool:
+        """Tests whether a stair area hits the building, its foundation, other balconies or stairs.
+
+        Args:
+            area is the area of the stair in m.
+            built_cells are the cells of the footprint.
+            balcony_cells are the cells of the balconies planned so far.
+            foreign_stairs are the areas of the stairs of other doors and balconies in m.
+            band_reach is how far the foundation band sticks out past the cell edges of the footprint in m.
+
+        Returns:
+            True if the stair collides with anything, otherwise False.
+        """
+        for cell_x, cell_y in built_cells:
+            cell_area: Rectangle = (
+                cell_x - band_reach,
+                cell_y - band_reach,
+                cell_x + 1.0 + band_reach,
+                cell_y + 1.0 + band_reach,
+            )
+            if StairPlacer.overlaps(area, cell_area):
+                return True
+        for cell_x, cell_y in balcony_cells:
+            if StairPlacer.overlaps(area, (cell_x, cell_y, cell_x + 1.0, cell_y + 1.0)):
+                return True
+        return any(StairPlacer.overlaps(area, other) for other in foreign_stairs)
 
     @staticmethod
     def _cells_of(

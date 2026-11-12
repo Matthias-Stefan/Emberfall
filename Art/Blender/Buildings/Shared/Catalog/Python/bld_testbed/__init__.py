@@ -17,6 +17,9 @@ from .bld_house_set import (
     HouseSet,
     default_house_set,
 )
+from .bld_progress_bar import (
+    ProgressBar,
+)
 from .bld_testbed_runner import (
     TestbedRunner,
 )
@@ -26,6 +29,7 @@ __all__: list[str] = [
     "FootprintBuilder",
     "HouseGridLayout",
     "HouseSet",
+    "ProgressBar",
     "TestbedRunner",
     "default_house_set",
 ]

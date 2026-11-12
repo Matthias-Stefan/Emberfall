@@ -12,7 +12,7 @@ import bpy
 
 from bld_architecture import Architect, Footprint, HousePlan, ModulePlacement
 from bld_blender import SharedMeshCache
-from bld_house_builder import FoundationBuilder
+from bld_house_builder import BalconyBlockBuilder, FoundationBuilder
 from bld_module_builder import (
     BaseModuleBuilder,
     DoorBuilder,
@@ -36,6 +36,7 @@ from .bld_house_colors import house_colors
 from .bld_house_part import HousePart
 from .bld_house_set import HouseSet
 from .bld_house_writers import HouseWriters
+from .bld_progress_bar import ProgressBar
 
 
 class HouseGridLayout:
@@ -81,6 +82,11 @@ class HouseGridLayout:
             The created objects in row order.
         """
         placed_objects: list[bpy.types.Object] = []
+        progress: ProgressBar = ProgressBar(
+            "houses",
+            len(self._house_set.create_infos)
+            * (len(self._house_set.fixed_seeds) + self._house_set.random_seed_count),
+        )
 
         for row_index, base_info in enumerate(self._house_set.create_infos):
             random_seeds: list[int] = [
@@ -139,6 +145,20 @@ class HouseGridLayout:
                         foundation_object.location.x = house_object.location.x
                         foundation_object.location.y = house_object.location.y
                         placed_objects.append(foundation_object)
+                    built_cells: frozenset[tuple[int, int]] = footprint.main_cells.union(
+                        *footprint.extension_cells
+                    )
+                    for balcony_index, balcony in enumerate(plan.balconies):
+                        block_object: bpy.types.Object = writers.writer_for(HousePart.FOUNDATION).write(
+                            f"house_r{row_index}_s{seed}_balcony_block{balcony_index}",
+                            BalconyBlockBuilder(
+                                balcony, plan.foundation, built_cells
+                            ).build(),
+                            house_colors.foundation,
+                        )
+                        block_object.location.x = house_object.location.x
+                        block_object.location.y = house_object.location.y
+                        placed_objects.append(block_object)
 
                 # posts and walls, rotated so the module front (-Y) faces outward
                 placement_count: int = 0
@@ -164,14 +184,36 @@ class HouseGridLayout:
                     placed_objects.append(module_object)
                     placement_count += 1
 
+                # levels above the ground floor, each in its own collections
+                for level_number, level in enumerate(plan.levels, start=1):
+                    level_placements: list[ModulePlacement] = [
+                        placement for ring in level.rings for placement in ring.placements
+                    ]
+                    level_placements.extend(level.floor)
+                    level_placements.extend(level.stairs)
+                    for placement in level_placements:
+                        module = placement.module
+                        module_object = writers.writer_for(HousePart.of(module), level_number).write_shared(
+                            f"house_r{row_index}_s{seed}_l{level_number}_{module.name}_{placement_count}",
+                            module.name,
+                            self._builder_for(module).build,
+                            house_colors.color_for(module),
+                        )
+                        module_object.location.x = house_object.location.x + placement.position[0]
+                        module_object.location.y = house_object.location.y + placement.position[1]
+                        module_object.location.z = placement.elevation
+                        module_object.rotation_euler.z = placement.rotation_steps * math.pi * 0.5
+                        placed_objects.append(module_object)
+                        placement_count += 1
+
                 writers.remove_empty_parts()
 
                 kind: str = "fixed" if seed in self._house_set.fixed_seeds else "random"
                 total_cells: int = len(footprint.main_cells) + sum(
                     len(cells) for cells in footprint.extension_cells
                 )
-                print(
-                    f"houses: row {row_index} seed {seed} ({kind}) "
+                progress.advance(
+                    f"row {row_index} seed {seed} ({kind}) "
                     f"main {self._size_of(footprint)}, "
                     f"{len(footprint.extension_cells)} extensions, "
                     f"{len(plan.balconies)} balconies, "

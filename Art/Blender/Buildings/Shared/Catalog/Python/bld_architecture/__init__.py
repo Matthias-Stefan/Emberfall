@@ -13,6 +13,7 @@ from .bld_create_info import (
     ExtensionsCreateInfo,
     FootprintCreateInfo,
     FoundationCreateInfo,
+    LevelsCreateInfo,
     OpeningCreateInfo,
 )
 from .bld_house_plan import (
@@ -25,6 +26,9 @@ from .bld_house_plan import (
     FoundationPlan,
     FoundationPlanner,
     HousePlan,
+    LevelPlan,
+    LevelPlanner,
+    LevelStairPlacer,
     ModulePlacement,
     ModuleRing,
     OpeningPlacer,
@@ -57,6 +61,10 @@ __all__: list[str] = [
     "FoundationPlan",
     "FoundationPlanner",
     "HousePlan",
+    "LevelPlan",
+    "LevelPlanner",
+    "LevelStairPlacer",
+    "LevelsCreateInfo",
     "ModuleAtlas",
     "ModulePlacement",
     "ModuleRing",

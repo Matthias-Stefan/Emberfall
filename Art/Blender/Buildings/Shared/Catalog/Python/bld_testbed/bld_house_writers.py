@@ -12,7 +12,7 @@ from .bld_house_part import HousePart
 
 
 class HouseWriters:
-    """Owns the collection of one house and a writer for each of its parts."""
+    """Owns the collection of one house and a writer for each of its parts on each level."""
 
     def __init__(
         self,
@@ -20,7 +20,7 @@ class HouseWriters:
         house_name: str,
         cache: SharedMeshCache,
     ) -> None:
-        """Creates the house collection with one sub collection per part.
+        """Creates the house collection with one sub collection per part of the ground level.
 
         Args:
             parent: Collection the house collection is linked into.
@@ -30,30 +30,30 @@ class HouseWriters:
         Returns:
             None.
         """
+        self._house_name: str = house_name
+        self._cache: SharedMeshCache = cache
         self._collection: bpy.types.Collection = bpy.data.collections.new(house_name)
         parent.children.link(self._collection)
 
-        self._part_collections: dict[HousePart, bpy.types.Collection] = {}
-        self._writers: dict[HousePart, MeshWriter] = {}
+        self._part_collections: dict[tuple[int, HousePart], bpy.types.Collection] = {}
+        self._writers: dict[tuple[int, HousePart], MeshWriter] = {}
         for part in HousePart:
-            part_collection: bpy.types.Collection = bpy.data.collections.new(
-                f"{house_name}_{part.value}"
-            )
-            self._collection.children.link(part_collection)
-            self._part_collections[part] = part_collection
-            self._writers[part] = MeshWriter(part_collection, cache)
+            self._create_part(0, part)
         return None
 
-    def writer_for(self, part: HousePart) -> MeshWriter:
-        """Returns the writer of a part.
+    def writer_for(self, part: HousePart, level: int = 0) -> MeshWriter:
+        """Returns the writer of a part on a level, the collection of an upper level is made on demand.
 
         Args:
             part is the part the objects belong to.
+            level is the level the objects belong to, 0 is the ground level.
 
         Returns:
-            Writer that links its objects into the collection of that part.
+            Writer that links its objects into the collection of that part and level.
         """
-        return self._writers[part]
+        if (level, part) not in self._writers:
+            self._create_part(level, part)
+        return self._writers[(level, part)]
 
     def remove_empty_parts(self) -> None:
         """Deletes the part collections that stayed empty, e.g. no stairs without a foundation.
@@ -64,4 +64,23 @@ class HouseWriters:
         for part_collection in self._part_collections.values():
             if not part_collection.objects:
                 bpy.data.collections.remove(part_collection)
+        return None
+
+    def _create_part(self, level: int, part: HousePart) -> None:
+        """Creates the collection and the writer of one part on one level.
+
+        Args:
+            level is the level, 0 is the ground level whose names carry no level.
+            part is the part.
+
+        Returns:
+            None.
+        """
+        level_tag: str = "" if level == 0 else f"_l{level}"
+        part_collection: bpy.types.Collection = bpy.data.collections.new(
+            f"{self._house_name}{level_tag}_{part.value}"
+        )
+        self._collection.children.link(part_collection)
+        self._part_collections[(level, part)] = part_collection
+        self._writers[(level, part)] = MeshWriter(part_collection, self._cache)
         return None

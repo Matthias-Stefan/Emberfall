@@ -11,6 +11,7 @@ from .bld_balcony_create_info import BalconyCreateInfo
 from .bld_extensions_create_info import ExtensionsCreateInfo
 from .bld_footprint_create_info import FootprintCreateInfo
 from .bld_foundation_create_info import FoundationCreateInfo
+from .bld_levels_create_info import LevelsCreateInfo
 from .bld_opening_create_info import OpeningCreateInfo
 
 
@@ -30,6 +31,8 @@ class BuildingCreateInfo:
     """Rules for the foundation."""
     balconies: BalconyCreateInfo = field(default_factory=BalconyCreateInfo)
     """Rules for the balconies."""
+    levels: LevelsCreateInfo = field(default_factory=LevelsCreateInfo)
+    """Rules for the levels above the ground floor."""
 
     @property
     def extension_factor(self) -> float:

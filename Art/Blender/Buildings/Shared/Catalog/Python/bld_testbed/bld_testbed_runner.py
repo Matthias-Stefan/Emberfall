@@ -27,10 +27,14 @@ from bld_presets import (
     post_40x40x260,
     rail_100x8x90,
     rail_200x8x90,
+    stair_80x400x290_16s_open,
+    stair_100x60x40_2s_open,
+    stair_100x60x40_2s_solid,
     stair_200x60x40_2s_open,
     stair_200x60x40_2s_solid,
     stair_200x90x60_3s_open_rail,
     stair_200x90x60_3s_solid_rail,
+    stair_400x60x40_2s_open,
     stair_400x60x40_2s_solid,
     wall_100x30x260,
     wall_200x30x260,
@@ -114,11 +118,15 @@ class TestbedRunner:
             (post_40x40x260, PostBuilder(post_40x40x260)),
         ]
         stair_row: CatalogRow = [
+            (stair_100x60x40_2s_solid, StairBuilder(stair_100x60x40_2s_solid)),
+            (stair_100x60x40_2s_open, StairBuilder(stair_100x60x40_2s_open)),
             (stair_200x60x40_2s_solid, StairBuilder(stair_200x60x40_2s_solid)),
             (stair_200x60x40_2s_open, StairBuilder(stair_200x60x40_2s_open)),
             (stair_200x90x60_3s_solid_rail, StairBuilder(stair_200x90x60_3s_solid_rail)),
             (stair_200x90x60_3s_open_rail, StairBuilder(stair_200x90x60_3s_open_rail)),
             (stair_400x60x40_2s_solid, StairBuilder(stair_400x60x40_2s_solid)),
+            (stair_400x60x40_2s_open, StairBuilder(stair_400x60x40_2s_open)),
+            (stair_80x400x290_16s_open, StairBuilder(stair_80x400x290_16s_open)),
         ]
         floor_row: CatalogRow = [
             (floor_100x100x30, FloorBuilder(floor_100x100x30)),

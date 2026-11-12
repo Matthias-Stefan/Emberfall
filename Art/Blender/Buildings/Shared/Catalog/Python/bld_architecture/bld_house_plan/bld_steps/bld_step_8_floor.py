@@ -50,13 +50,39 @@ class FloorPlanner:
             return ()
 
         # the slab hangs down from the floor level, so its top is flush with the foundation top
-        elevation: float = foundation.height - slab.height
+        return self.lay(footprint, foundation.height - slab.height)
+
+    @property
+    def slab_height(self) -> float | None:
+        """Thickness of the slab of a whole cell in m, None if the atlas has none."""
+        slab: FloorModule | None = self._find_cell_slab()
+        return None if slab is None else slab.height
+
+    def lay(
+        self,
+        footprint: Footprint,
+        elevation: float,
+        hole: frozenset[tuple[int, int]] = frozenset(),
+    ) -> tuple[ModulePlacement, ...]:
+        """Lays one slab of a whole cell on every cell of the footprint.
+
+        Args:
+            footprint: Footprint whose cells get a slab.
+            elevation: Height of the slab bottom above the ground in m.
+            hole: Cells that stay free, e.g. where a stair comes through.
+
+        Returns:
+            One placement per cell except the hole in cell order, empty if the atlas has no slab of a whole cell.
+        """
+        slab: FloorModule | None = self._find_cell_slab()
+        if slab is None:
+            return ()
         cells: frozenset[tuple[int, int]] = footprint.main_cells.union(*footprint.extension_cells)
         return tuple(
             ModulePlacement(
                 slab, (cell_x + CELL_SIZE * 0.5, cell_y + CELL_SIZE * 0.5), 0, elevation
             )
-            for cell_x, cell_y in sorted(cells)
+            for cell_x, cell_y in sorted(cells - hole)
         )
 
     def _find_cell_slab(self) -> FloorModule | None:
