@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 import bmesh
 
-from bld_modules import WindowModule, TOLERANCE
+from bld_modules import TOLERANCE, WindowModule
 
 from .bld_base_module_builder import BaseModuleBuilder
 
@@ -34,7 +34,6 @@ class WindowBuilder(BaseModuleBuilder):
         """
         super().__init__(module, close_top, close_bottom, close_ends)
         self._window_module: WindowModule = module
-        return None
 
     def build(self) -> bmesh.types.BMesh:
         """Builds front and back cells around the opening plus its reveals.

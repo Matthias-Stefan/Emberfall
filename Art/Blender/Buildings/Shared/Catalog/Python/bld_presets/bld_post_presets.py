@@ -8,5 +8,7 @@ from bld_modules import PostModule
 
 
 post_34x34x260: PostModule = PostModule(width=0.34, height=2.60, depth=0.34)
+post_40x40x260: PostModule = PostModule(width=0.40, height=2.60, depth=0.40)
 
 assert post_34x34x260.name == "post_34x34x260"
+assert post_40x40x260.name == "post_40x40x260"

@@ -60,7 +60,6 @@ class HouseGridLayout:
         self._start_y: float = start_y
         self._pitch_x: float = pitch_x
         self._pitch_y: float = pitch_y
-        return None
 
     def place(self) -> list[bpy.types.Object]:
         """Designs, builds and places all houses.

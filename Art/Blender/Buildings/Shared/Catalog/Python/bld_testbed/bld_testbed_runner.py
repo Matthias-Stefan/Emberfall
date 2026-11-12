@@ -18,13 +18,14 @@ from bld_presets import (
     door_200x30x260,
     door_400x30x260,
     post_34x34x260,
+    post_40x40x260,
     wall_100x30x260,
     wall_200x30x260,
     wall_400x30x260,
     wall_600x30x260,
     window_100x30x260,
     window_200x30x260,
-    window_400x30x260
+    window_400x30x260,
 )
 
 from .bld_catalog_layout import CatalogLayout, CatalogRow
@@ -51,7 +52,6 @@ class TestbedRunner:
         """
         self._modules_collection: bpy.types.Collection = modules_collection
         self._houses_collection: bpy.types.Collection = houses_collection
-        return None
 
     def run(self) -> None:
         """Prints all modules, then builds and places catalog and houses.
@@ -71,7 +71,6 @@ class TestbedRunner:
         house_writer: MeshWriter = MeshWriter(self._houses_collection)
         architect: Architect = Architect(Style("default", atlas))
         HouseGridLayout(house_writer, architect, default_house_set).place()
-        return None
 
     def _build_catalog_rows(self) -> list[CatalogRow]:
         """Pairs every preset with its builder, one row per module kind.
@@ -100,6 +99,7 @@ class TestbedRunner:
         ]
         post_row: CatalogRow = [
             (post_34x34x260, PostBuilder(post_34x34x260)),
+            (post_40x40x260, PostBuilder(post_40x40x260)),
         ]
         return [wall_row, door_row, window_row, post_row]
 
@@ -118,4 +118,3 @@ class TestbedRunner:
                     f"testbed: {module.name} ({type(module).__name__}) "
                     f"{module.width} x {module.depth} x {module.height} m"
                 )
-        return None
