@@ -109,6 +109,7 @@ class HouseGridLayout:
                         module_object: bpy.types.Object = self._writer.write(
                             f"house_r{row_index}_s{seed}_{module.name}_{placement_count}",
                             self._builder_for(module).build(),
+                            footprint_colors.color_for(module),
                         )
                         module_object.location.x = house_object.location.x + placement.position[0]
                         module_object.location.y = house_object.location.y + placement.position[1]
