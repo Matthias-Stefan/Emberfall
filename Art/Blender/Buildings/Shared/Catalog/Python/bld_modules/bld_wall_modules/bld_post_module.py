@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from .bld_base_wall_module import BaseWallModule, TOLERANCE
+from .bld_base_wall_module import TOLERANCE, BaseWallModule
 
 
 @dataclass(frozen=True)
@@ -29,4 +29,3 @@ class PostModule(BaseWallModule):
         super().validate()  # base checks first
         if abs(self.width - self.depth) > TOLERANCE:
             raise ValueError(f"A post needs a square footprint, got {self.width} x {self.depth}")
-        return None

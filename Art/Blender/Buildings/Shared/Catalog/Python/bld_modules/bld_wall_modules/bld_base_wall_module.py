@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from ..bld_base_module import BaseModule
 
-
 TOLERANCE: float = 1e-4
 """Tolerance for float comparisons in m, 0.1 mm."""
 
@@ -31,7 +30,6 @@ class BaseWallModule(BaseModule):
             None.
         """
         self.validate()
-        return None
 
     def validate(self) -> None:
         """Validates the module, subclasses extend this and call super().validate() first.
@@ -46,7 +44,6 @@ class BaseWallModule(BaseModule):
             raise ValueError(
                 f"Dimensions must be positive, got {self.width} x {self.depth} x {self.height}"
             )
-        return None
 
     @property
     @abstractmethod

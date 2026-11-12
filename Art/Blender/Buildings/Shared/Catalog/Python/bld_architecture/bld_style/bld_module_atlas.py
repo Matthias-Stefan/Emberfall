@@ -22,7 +22,6 @@ class ModuleAtlas:
         self._modules: dict[str, BaseWallModule] = {}
         for module in modules or []:
             self.register(module)
-        return None
 
     def register(self, module: BaseWallModule) -> None:
         """Adds a module to the atlas.
@@ -39,7 +38,6 @@ class ModuleAtlas:
         if module.name in self._modules:
             raise ValueError(f"Module '{module.name}' is already registered")
         self._modules[module.name] = module
-        return None
 
     def modules_of(self, module_type: type[BaseWallModule]) -> list[BaseWallModule]:
         """Returns all modules of one kind, widest first.

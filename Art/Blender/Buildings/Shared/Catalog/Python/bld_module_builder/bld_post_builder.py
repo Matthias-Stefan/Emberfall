@@ -7,6 +7,7 @@ __version__ = "0.1.0"
 import bmesh
 
 from bld_modules import PostModule
+
 from .bld_base_module_builder import BaseModuleBuilder
 
 
@@ -24,7 +25,6 @@ class PostBuilder(BaseModuleBuilder):
         """
         super().__init__(module)
         self._post_module: PostModule = module
-        return None
 
     def build(self) -> bmesh.types.BMesh:
         """Builds a closed box from the post dimensions.

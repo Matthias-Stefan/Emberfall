@@ -6,7 +6,6 @@ __version__ = "0.1.0"
 
 from bld_modules import DoorModule
 
-
 door_200x30x260: DoorModule = DoorModule(
     width=2.0, height=2.6, depth=0.3, opening_width=1.0, opening_height=2.1
 )

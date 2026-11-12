@@ -46,7 +46,6 @@ writer: Writer the module objects are created with.
         self._start_y: float = start_y
         self._row_spacing: float = row_spacing
         self._module_gap: float = module_gap
-        return None
 
     def place(self) -> list[bpy.types.Object]:
         """Builds and places all modules of all rows.

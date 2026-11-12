@@ -30,4 +30,3 @@ class DoorModule(OpeningWallModule):
         super().validate()  # base and opening checks first
         if self.sill_height > TOLERANCE:
             raise ValueError(f"A door needs sill_height 0, got {self.sill_height}")
-        return None

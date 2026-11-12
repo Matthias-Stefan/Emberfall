@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from ..bld_base_wall_module import BaseWallModule, TOLERANCE
+from ..bld_base_wall_module import TOLERANCE, BaseWallModule
 
 
 @dataclass(frozen=True)
@@ -56,4 +56,3 @@ class OpeningWallModule(BaseWallModule):
             raise ValueError(f"Opening reaches the top of {self.name}")
         if self.resolved_opening_offset + self.opening_width > self.width + TOLERANCE:
             raise ValueError(f"Opening leaves the module {self.name} on the right side")
-        return None

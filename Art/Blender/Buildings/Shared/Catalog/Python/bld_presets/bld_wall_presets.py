@@ -6,7 +6,6 @@ __version__ = "0.1.0"
 
 from bld_modules import WallModule
 
-
 wall_100x30x260: WallModule = WallModule(width=1.0, height=2.6, depth=0.3)
 wall_200x30x260: WallModule = WallModule(width=2.0, height=2.6, depth=0.3)
 wall_400x30x260: WallModule = WallModule(width=4.0, height=2.6, depth=0.3)

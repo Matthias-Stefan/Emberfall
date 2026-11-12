@@ -24,7 +24,6 @@ class FootprintBuilder:
         """
         self._footprint: Footprint = footprint
         self._floor_offset: float = floor_offset
-        return None
 
     def build_main(self) -> bmesh.types.BMesh:
         """Builds the quads of the main building.

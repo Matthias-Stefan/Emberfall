@@ -36,7 +36,6 @@ class BaseModuleBuilder(metaclass=ABCMeta):
         self._close_top: bool = close_top
         self._close_bottom: bool = close_bottom
         self._close_ends: bool = close_ends
-        return None
 
     @abstractmethod
     def build(self) -> bmesh.types.BMesh:
@@ -59,7 +58,6 @@ class BaseModuleBuilder(metaclass=ABCMeta):
             None.
         """
         bm.faces.new([bm.verts.new(point) for point in points])
-        return None
 
     def _add_cell(
         self,
@@ -133,4 +131,3 @@ class BaseModuleBuilder(metaclass=ABCMeta):
                 (x_max, half_depth, z_max),
                 (x_max, -half_depth, z_max),
             ])
-        return None

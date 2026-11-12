@@ -12,6 +12,13 @@ from .bld_post_presets import (
     post_34x34x260,
     post_40x40x260,
 )
+from .bld_stair_presets import (
+    stair_200x60x40_2s_open,
+    stair_200x60x40_2s_solid,
+    stair_200x90x60_3s_open_rail,
+    stair_200x90x60_3s_solid_rail,
+    stair_400x60x40_2s_solid,
+)
 from .bld_wall_presets import (
     wall_100x30x260,
     wall_200x30x260,
@@ -29,6 +36,11 @@ __all__: list[str] = [
     "door_400x30x260",
     "post_34x34x260",
     "post_40x40x260",
+    "stair_200x60x40_2s_open",
+    "stair_200x60x40_2s_solid",
+    "stair_200x90x60_3s_open_rail",
+    "stair_200x90x60_3s_solid_rail",
+    "stair_400x60x40_2s_solid",
     "wall_100x30x260",
     "wall_200x30x260",
     "wall_400x30x260",

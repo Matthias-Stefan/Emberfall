@@ -11,6 +11,7 @@ from bld_blender import MeshWriter
 from bld_module_builder import (
     DoorBuilder,
     PostBuilder,
+    StairBuilder,
     WallBuilder,
     WindowBuilder,
 )
@@ -19,6 +20,11 @@ from bld_presets import (
     door_400x30x260,
     post_34x34x260,
     post_40x40x260,
+    stair_200x60x40_2s_open,
+    stair_200x60x40_2s_solid,
+    stair_200x90x60_3s_open_rail,
+    stair_200x90x60_3s_solid_rail,
+    stair_400x60x40_2s_solid,
     wall_100x30x260,
     wall_200x30x260,
     wall_400x30x260,
@@ -78,7 +84,7 @@ class TestbedRunner:
         The catalog shows every module closed on all sides, so the flags are set here.
 
         Returns:
-            Wall row, door row, window row and post row.
+            Wall row, door row, window row, post row and stair row.
         """
         closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
 
@@ -101,7 +107,14 @@ class TestbedRunner:
             (post_34x34x260, PostBuilder(post_34x34x260)),
             (post_40x40x260, PostBuilder(post_40x40x260)),
         ]
-        return [wall_row, door_row, window_row, post_row]
+        stair_row: CatalogRow = [
+            (stair_200x60x40_2s_solid, StairBuilder(stair_200x60x40_2s_solid)),
+            (stair_200x60x40_2s_open, StairBuilder(stair_200x60x40_2s_open)),
+            (stair_200x90x60_3s_solid_rail, StairBuilder(stair_200x90x60_3s_solid_rail)),
+            (stair_200x90x60_3s_open_rail, StairBuilder(stair_200x90x60_3s_open_rail)),
+            (stair_400x60x40_2s_solid, StairBuilder(stair_400x60x40_2s_solid)),
+        ]
+        return [wall_row, door_row, window_row, post_row, stair_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.

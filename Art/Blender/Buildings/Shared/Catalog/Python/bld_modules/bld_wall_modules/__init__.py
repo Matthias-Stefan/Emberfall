@@ -16,6 +16,9 @@ from .bld_opening_wall_module import (
 from .bld_post_module import (
     PostModule
 )
+from .bld_stair_module import (
+    StairModule
+)
 from .bld_wall_module import (
     WallModule
 )
@@ -27,5 +30,6 @@ __all__: list[str] = [
     "OpeningWallModule",
     "WindowModule",
     "PostModule",
+    "StairModule",
     "WallModule",
 ]

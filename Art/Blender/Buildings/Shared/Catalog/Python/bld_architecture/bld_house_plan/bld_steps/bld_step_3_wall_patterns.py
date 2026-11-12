@@ -4,6 +4,7 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+import itertools
 import random
 from collections.abc import Callable, Iterable
 
@@ -41,7 +42,7 @@ def max_neighbour_ratio(limit: float) -> PatternRule:
     def rule(pattern: WallPattern) -> bool:
         return all(
             max(first_width, second_width) / min(first_width, second_width) <= limit + TOLERANCE
-            for first_width, second_width in zip(pattern, pattern[1:])
+            for first_width, second_width in itertools.pairwise(pattern)
         )
 
     return rule

@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Immutable module descriptions: walls, doors, windows and posts."""
+"""Immutable module descriptions: walls, doors, windows, posts and stairs."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -13,6 +13,7 @@ from .bld_wall_modules import (
     DoorModule,
     OpeningWallModule,
     PostModule,
+    StairModule,
     WallModule,
     WindowModule,
 
@@ -25,6 +26,7 @@ __all__: list[str] = [
     "DoorModule",
     "OpeningWallModule",
     "PostModule",
+    "StairModule",
     "WallModule",
     "WindowModule",
 
