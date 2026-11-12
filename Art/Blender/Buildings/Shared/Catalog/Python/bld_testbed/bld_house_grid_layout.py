@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Places one house per create info and seed on a grid."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 import math
 import random
@@ -6,12 +10,19 @@ from dataclasses import replace
 
 import bpy
 
-from bld_architecture import Architect, Footprint, HousePlan, footprint_colors
+from bld_architecture import Architect, Footprint, HousePlan
 from bld_blender import MeshWriter
-from bld_module_builder import BaseModuleBuilder, DoorBuilder, PostBuilder, WallBuilder
-from bld_modules import BaseWallModule, DoorModule, PostModule
+from bld_module_builder import (
+    BaseModuleBuilder,
+    DoorBuilder,
+    PostBuilder,
+    WallBuilder,
+    WindowBuilder,
+)
+from bld_modules import BaseWallModule, DoorModule, PostModule, WindowModule
 
 from .bld_footprint_builder import FootprintBuilder
+from .bld_footprint_colors import footprint_colors
 from .bld_house_set import HouseSet
 
 
@@ -130,4 +141,6 @@ class HouseGridLayout:
             return PostBuilder(module)
         if isinstance(module, DoorModule):
             return DoorBuilder(module)
+        if isinstance(module, WindowModule):
+            return WindowBuilder(module)
         return WallBuilder(module)  # type: ignore[arg-type]

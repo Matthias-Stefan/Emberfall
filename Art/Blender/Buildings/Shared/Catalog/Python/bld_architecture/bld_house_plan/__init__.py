@@ -1,0 +1,49 @@
+# Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Everything that is planned for one house: the result and the steps that fill it."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
+
+from .bld_house_plan import (
+    HousePlan,
+    ModulePlacement,
+    ModuleRing,
+)
+from .bld_steps.bld_step_1_footprint import (
+    CellRectangle,
+    Footprint,
+    FootprintDesigner,
+    Side,
+)
+from .bld_steps.bld_step_2_outline import (
+    CornerKind,
+    OutlineCorner,
+    OutlineReader,
+    OutlineRing,
+    OutlineSegment,
+    Point,
+)
+from .bld_steps.bld_step_3_walls import (
+    WallFiller,
+)
+from .bld_steps.bld_step_4_openings import (
+    OpeningPlacer,
+)
+
+__all__: list[str] = [
+    "CellRectangle",
+    "CornerKind",
+    "Footprint",
+    "FootprintDesigner",
+    "HousePlan",
+    "ModulePlacement",
+    "ModuleRing",
+    "OpeningPlacer",
+    "OutlineCorner",
+    "OutlineReader",
+    "OutlineRing",
+    "OutlineSegment",
+    "Point",
+    "Side",
+    "WallFiller",
+]

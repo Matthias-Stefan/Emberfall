@@ -1,11 +1,86 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-# bld_architecture/bld_contour_reader.py
+"""Step 2: footprint -> outline rings, the closed edges of the footprint as corners and straight segments."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from collections import defaultdict
+from dataclasses import dataclass
+from enum import Enum
 
-from .bld_contour import ContourCorner, ContourRing, ContourSegment, CornerKind, Point
-from .bld_footprint import Footprint
-from .bld_side import Side
+from .bld_step_1_footprint import Footprint, Side
+
+Point = tuple[int, int]
+
+
+class CornerKind(Enum):
+    """Kind of an outline corner, seen from the building."""
+
+    OUTER = "outer"
+    INNER = "inner"
+
+
+@dataclass(frozen=True)
+class OutlineCorner:
+    """One corner of an outline ring."""
+
+    point: Point
+    """Grid point in m, one cell is 1 m."""
+    kind: CornerKind
+    """Outer (convex) or inner (concave)."""
+
+
+@dataclass(frozen=True)
+class OutlineSegment:
+    """Straight stretch of wall between two corners."""
+
+    start: Point
+    """Grid point where the segment begins."""
+    end: Point
+    """Grid point where the segment ends."""
+    outward: Side
+    """Side the outside of the building lies on."""
+
+    @property
+    def length(self) -> int:
+        """Length of the segment in m."""
+        return abs(self.end[0] - self.start[0]) + abs(self.end[1] - self.start[1])
+
+
+@dataclass(frozen=True)
+class OutlineRing:
+    """Closed outline, segment i runs from corner i to corner i + 1 (wrapping)."""
+
+    corners: tuple[OutlineCorner, ...]
+    """Corners in walking order, interior on the left."""
+    segments: tuple[OutlineSegment, ...]
+    """Segments in walking order."""
+
+    def __post_init__(self) -> None:
+        """Validates that corners and segments belong together.
+
+        Raises:
+            ValueError: If the counts differ or the turn balance is not +-4.
+
+        Returns:
+            None.
+        """
+        if len(self.corners) != len(self.segments):
+            raise ValueError("A ring needs exactly one segment per corner")
+        outer_count: int = sum(1 for corner in self.corners if corner.kind is CornerKind.OUTER)
+        inner_count: int = len(self.corners) - outer_count
+        if abs(outer_count - inner_count) != 4:
+            raise ValueError(
+                f"Ring is not closed: {outer_count} outer, {inner_count} inner corners"
+            )
+        return None
+
+    @property
+    def is_hole(self) -> bool:
+        """Whether the ring encloses an empty area (more inner than outer corners)."""
+        outer_count: int = sum(1 for corner in self.corners if corner.kind is CornerKind.OUTER)
+        return outer_count < len(self.corners) - outer_count
+
 
 # east, north, west, south: counter-clockwise, so +1 is a left turn
 _DIRECTIONS: tuple[Point, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -13,17 +88,17 @@ _DIRECTIONS: tuple[Point, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
 _OUTWARD: tuple[Side, ...] = (Side.SOUTH, Side.EAST, Side.NORTH, Side.WEST)
 
 
-class ContourReader:
-    """Reads the closed outer contours of a footprint."""
+class OutlineReader:
+    """Reads the closed outer outlines of a footprint."""
 
-    def read(self, footprint: Footprint) -> tuple[ContourRing, ...]:
-        """Extracts all contour rings.
+    def read(self, footprint: Footprint) -> tuple[OutlineRing, ...]:
+        """Extracts all outline rings.
 
         Args:
             footprint: Footprint to read.
 
         Returns:
-            One ring per closed contour, holes (courtyards) included.
+            One ring per closed outline, holes (courtyards) included.
         """
         cells: frozenset[Point] = footprint.main_cells.union(*footprint.extension_cells)
         outgoing: dict[Point, list[Point]] = defaultdict(list)
@@ -39,7 +114,7 @@ class ContourReader:
             if (cell_x - 1, cell_y) not in cells:
                 outgoing[(cell_x, cell_y + 1)].append((cell_x, cell_y))
 
-        rings: list[ContourRing] = []
+        rings: list[OutlineRing] = []
         while outgoing:
             start: Point = min(outgoing)
             rings.append(self._build_ring(self._walk(start, outgoing)))
@@ -92,9 +167,9 @@ class ContourReader:
             for candidate in candidates:
                 if self._direction_of(current, candidate) == wanted:
                     return candidate
-        raise ValueError(f"Contour dead end at {current}")
+        raise ValueError(f"Outline dead end at {current}")
 
-    def _build_ring(self, points: list[Point]) -> ContourRing:
+    def _build_ring(self, points: list[Point]) -> OutlineRing:
         """Reduces a point walk to corners and straight segments.
 
         Args:
@@ -105,7 +180,7 @@ class ContourReader:
         """
         count: int = len(points)
         corner_indices: list[int] = []
-        corners: list[ContourCorner] = []
+        corners: list[OutlineCorner] = []
 
         for index, point in enumerate(points):
             incoming: int = self._direction_of(points[index - 1], point)
@@ -114,19 +189,19 @@ class ContourReader:
             if turn == 0:
                 continue
             if turn == 2:
-                raise ValueError(f"U-turn in contour at {point}")
+                raise ValueError(f"U-turn in outline at {point}")
             corner_indices.append(index)
             corners.append(
-                ContourCorner(point, CornerKind.OUTER if turn == 1 else CornerKind.INNER)
+                OutlineCorner(point, CornerKind.OUTER if turn == 1 else CornerKind.INNER)
             )
 
-        segments: list[ContourSegment] = []
+        segments: list[OutlineSegment] = []
         for corner_number, start_index in enumerate(corner_indices):
             end_index: int = corner_indices[(corner_number + 1) % len(corner_indices)]
             direction: int = self._direction_of(
                 points[start_index], points[(start_index + 1) % count]
             )
             segments.append(
-                ContourSegment(points[start_index], points[end_index], _OUTWARD[direction])
+                OutlineSegment(points[start_index], points[end_index], _OUTWARD[direction])
             )
-        return ContourRing(tuple(corners), tuple(segments))
+        return OutlineRing(tuple(corners), tuple(segments))

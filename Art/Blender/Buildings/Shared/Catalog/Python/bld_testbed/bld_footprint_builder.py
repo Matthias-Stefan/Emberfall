@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Builds flat floor quads from the cells of a footprint."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 import bmesh
 

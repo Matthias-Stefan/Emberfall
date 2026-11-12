@@ -1,8 +1,12 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Rebuilds the testbed: catalog modules in -X, house grid in +X."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 import bpy
 
-from bld_architecture import Architect, ModuleAtlas
+from bld_architecture import Architect, ModuleAtlas, Style
 from bld_blender import MeshWriter
 from bld_module_builder import (
     DoorBuilder,
@@ -65,7 +69,7 @@ class TestbedRunner:
             [module for row in catalog_rows for module, _ in row]
         )
         house_writer: MeshWriter = MeshWriter(self._houses_collection)
-        architect: Architect = Architect(atlas)
+        architect: Architect = Architect(Style("default", atlas))
         HouseGridLayout(house_writer, architect, default_house_set).place()
         return None
 

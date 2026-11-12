@@ -1,67 +1,57 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-# bld_architecture/__init__.py
+"""Architect that designs building plans from create infos and a style."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from .bld_architect import (
     Architect,
 )
-from .bld_building_create_info import (
+from .bld_create_info import (
     BuildingCreateInfo,
-)
-from .bld_cell_rectangle import (
-    CellRectangle,
-)
-from .bld_contour import (
-    ContourCorner,
-    ContourRing,
-    ContourSegment,
-    CornerKind,
-)
-from .bld_contour_reader import (
-    ContourReader,
-)
-from .bld_footprint import (
-    Footprint,
-)
-from .bld_footprint_colors import (
-    FootprintColors,
-    footprint_colors,
+    ExtensionsCreateInfo,
+    FootprintCreateInfo,
+    OpeningCreateInfo,
 )
 from .bld_house_plan import (
+    CellRectangle,
+    Footprint,
+    FootprintDesigner,
     HousePlan,
-)
-from .bld_module_atlas import (
-    ModuleAtlas,
-)
-from .bld_placement import (
-    Placement,
-)
-from .bld_side import (
+    ModulePlacement,
+    ModuleRing,
+    OpeningPlacer,
+    OutlineCorner,
+    OutlineReader,
+    OutlineRing,
+    OutlineSegment,
     Side,
-)
-from .bld_wall_filler import (
     WallFiller,
 )
-from .bld_wall_ring import (
-    WallRing,
+from .bld_style import (
+    ModuleAtlas,
+    Style,
 )
 
 __all__: list[str] = [
     "Architect",
     "BuildingCreateInfo",
     "CellRectangle",
-    "ContourCorner",
-    "ContourReader",
-    "ContourRing",
-    "ContourSegment",
-    "CornerKind",
+    "ExtensionsCreateInfo",
     "Footprint",
-    "FootprintColors",
+    "FootprintCreateInfo",
+    "FootprintDesigner",
     "HousePlan",
     "ModuleAtlas",
-    "Placement",
+    "ModulePlacement",
+    "ModuleRing",
+    "OpeningCreateInfo",
+    "OpeningPlacer",
+    "OutlineCorner",
+    "OutlineReader",
+    "OutlineRing",
+    "OutlineSegment",
     "Side",
+    "Style",
     "WallFiller",
-    "WallRing",
-
-    "footprint_colors",
 ]

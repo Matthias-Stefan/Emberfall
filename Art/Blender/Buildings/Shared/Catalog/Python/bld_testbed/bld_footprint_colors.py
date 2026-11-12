@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Display colors for the parts of a footprint."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from dataclasses import dataclass
 

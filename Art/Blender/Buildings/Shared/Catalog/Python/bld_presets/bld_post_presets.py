@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Post presets, named width x depth x height in cm."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from bld_modules import PostModule
 

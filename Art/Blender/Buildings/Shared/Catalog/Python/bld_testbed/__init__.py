@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Testbed that builds the module catalog and a grid of houses in Blender."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from .bld_catalog_layout import (
     CatalogLayout,
