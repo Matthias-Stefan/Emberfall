@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Window module, a wall slot with a window opening."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from dataclasses import dataclass
 

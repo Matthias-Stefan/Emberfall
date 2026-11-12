@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Post module that stands on the corners of a wall ring."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from dataclasses import dataclass
 

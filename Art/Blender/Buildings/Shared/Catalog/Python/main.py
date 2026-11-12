@@ -1,5 +1,10 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Entry script: rebuilds the generated module catalog and house grid in Blender."""
 
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
+
+# Run in the Blender console:
 # exec(bpy.data.texts["main.py"].as_string())
 
 import sys
@@ -13,27 +18,17 @@ PACKAGE_PREFIXES: tuple[str, ...] = ("bld_",)
 
 
 def setup_python_path() -> None:
-    """Adds the Python folder next to the .blend file to sys.path.
-
-    Returns:
-        None.
-    """
+    """Adds the Python folder next to the .blend file to sys.path."""
     python_dir: Path = Path(bpy.path.abspath("//")) / "Python"
     if str(python_dir) not in sys.path:
         sys.path.append(str(python_dir))
-    return None
 
 
 def unload_packages() -> None:
-    """Drops cached package modules so edits are picked up on re-run.
-
-    Returns:
-        None.
-    """
+    """Drops cached package modules so edits are picked up on re-run."""
     for module_name in list(sys.modules):
         if module_name.startswith(PACKAGE_PREFIXES):
             del sys.modules[module_name]
-    return None
 
 
 def recreate_collection(name: str) -> bpy.types.Collection:
@@ -60,11 +55,7 @@ def recreate_collection(name: str) -> bpy.types.Collection:
 
 
 def setup_viewport_color() -> None:
-    """Switches the 3D viewports of every workspace to solid shading with object colors.
-
-    Returns:
-        None.
-    """
+    """Switches the 3D viewports of every workspace to solid shading with object colors."""
     for screen in bpy.data.screens:
         for screen_area in screen.areas:
             if screen_area.type != "VIEW_3D":
@@ -73,26 +64,20 @@ def setup_viewport_color() -> None:
                 if space.type == "VIEW_3D":
                     space.shading.type = "SOLID"
                     space.shading.color_type = "OBJECT"
-    return None
 
 
-# exec(bpy.data.texts["main.py"].as_string())
 def main() -> None:
-    """Rebuilds everything generated from scratch.
-
-    Returns:
-        None.
-    """
+    """Rebuilds everything generated from scratch."""
     setup_python_path()
     unload_packages()
 
+    # imported here, the packages are only found after the path setup and a fresh unload
     from bld_testbed import TestbedRunner
 
-    modules_collection = recreate_collection(GEN_MODULES_COLLECTION)
-    houses_collection = recreate_collection(GEN_HOUSES_COLLECTION)
+    modules_collection: bpy.types.Collection = recreate_collection(GEN_MODULES_COLLECTION)
+    houses_collection: bpy.types.Collection = recreate_collection(GEN_HOUSES_COLLECTION)
     TestbedRunner(modules_collection, houses_collection).run()
     setup_viewport_color()
-    return None
 
 
 if __name__ == "__main__":

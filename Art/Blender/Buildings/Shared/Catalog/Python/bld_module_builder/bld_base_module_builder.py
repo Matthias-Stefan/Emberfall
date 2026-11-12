@@ -1,5 +1,8 @@
-﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
-# bld_module_builder/bld_base_module_builder.py
+# Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Base class of all module builders, with the shared face and cell helpers."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from abc import ABCMeta, abstractmethod
 

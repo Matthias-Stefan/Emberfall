@@ -1,4 +1,8 @@
-﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
+# Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Immutable module descriptions: walls, doors, windows and posts."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from .bld_base_module import (
     BaseModule,

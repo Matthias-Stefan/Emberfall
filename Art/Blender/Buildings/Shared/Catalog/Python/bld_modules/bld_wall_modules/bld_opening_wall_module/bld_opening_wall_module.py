@@ -1,4 +1,8 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Base class of wall modules with an opening."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from dataclasses import dataclass
 

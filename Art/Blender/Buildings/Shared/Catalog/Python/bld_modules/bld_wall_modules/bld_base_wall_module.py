@@ -1,4 +1,8 @@
-﻿# Copyright (c) 2026 Emberfall. All Rights Reserved.
+# Copyright (c) 2026 Emberfall. All Rights Reserved.
+"""Base class of all wall slot modules, with outer dimensions and validation."""
+
+__author__ = "Matthias Stefan"
+__version__ = "0.1.0"
 
 from abc import abstractmethod
 from dataclasses import dataclass
