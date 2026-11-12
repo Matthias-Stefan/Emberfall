@@ -11,7 +11,7 @@ from dataclasses import replace
 import bpy
 
 from bld_architecture import Architect, Footprint, HousePlan, ModulePlacement
-from bld_blender import MeshWriter
+from bld_blender import SharedMeshCache
 from bld_house_builder import FoundationBuilder
 from bld_module_builder import (
     BaseModuleBuilder,
@@ -33,7 +33,9 @@ from bld_modules import (
 
 from .bld_footprint_builder import FootprintBuilder
 from .bld_footprint_colors import footprint_colors
+from .bld_house_part import HousePart
 from .bld_house_set import HouseSet
+from .bld_house_writers import HouseWriters
 
 
 class HouseGridLayout:
@@ -41,7 +43,7 @@ class HouseGridLayout:
 
     def __init__(
         self,
-        writer: MeshWriter,
+        houses_collection: bpy.types.Collection,
         architect: Architect,
         house_set: HouseSet,
         start_x: float = 10.0,
@@ -52,7 +54,7 @@ class HouseGridLayout:
         """Creates a house grid layout.
 
         Args:
-            writer: Writer the house objects are created with.
+            houses_collection: Collection that gets one sub collection per house.
             architect: Architect that designs the house plans.
             house_set: Create infos and seeds to build.
             start_x: X of the first column in m, columns grow towards +X.
@@ -63,7 +65,8 @@ class HouseGridLayout:
         Returns:
             None.
         """
-        self._writer: MeshWriter = writer
+        self._houses_collection: bpy.types.Collection = houses_collection
+        self._cache: SharedMeshCache = SharedMeshCache()
         self._architect: Architect = architect
         self._house_set: HouseSet = house_set
         self._start_x: float = start_x
@@ -90,8 +93,11 @@ class HouseGridLayout:
                 plan: HousePlan = self._architect.design(replace(base_info, seed=seed))
                 footprint: Footprint = plan.footprint
                 builder: FootprintBuilder = FootprintBuilder(footprint)
+                writers: HouseWriters = HouseWriters(
+                    self._houses_collection, f"house_r{row_index}_s{seed}", self._cache
+                )
 
-                house_object: bpy.types.Object = self._writer.write(
+                house_object: bpy.types.Object = writers.writer_for(HousePart.FOOTPRINT).write(
                     f"house_r{row_index}_s{seed}_main",
                     builder.build_main(),
                     footprint_colors.main,
@@ -101,7 +107,7 @@ class HouseGridLayout:
                 placed_objects.append(house_object)
 
                 for extension_index in range(len(footprint.extension_cells)):
-                    extension_object: bpy.types.Object = self._writer.write(
+                    extension_object: bpy.types.Object = writers.writer_for(HousePart.FOOTPRINT).write(
                         f"house_r{row_index}_s{seed}_ext{extension_index}",
                         builder.build_extension(extension_index),
                         footprint_colors.extension,
@@ -113,7 +119,9 @@ class HouseGridLayout:
                 if plan.foundation is not None:
                     foundation_builder: FoundationBuilder = FoundationBuilder(plan.foundation)
                     for ring_index in range(foundation_builder.ring_count):
-                        foundation_object: bpy.types.Object = self._writer.write(
+                        foundation_object: bpy.types.Object = writers.writer_for(
+                            HousePart.FOUNDATION
+                        ).write(
                             f"house_r{row_index}_s{seed}_foundation{ring_index}",
                             foundation_builder.build_ring(ring_index),
                             footprint_colors.foundation,
@@ -130,9 +138,13 @@ class HouseGridLayout:
                 all_placements.extend(plan.floor)
                 for placement in all_placements:
                     module: BaseWallModule = placement.module
-                    module_object: bpy.types.Object = self._writer.write(
+                    # the same module always has the same geometry, so all objects share one mesh
+                    module_object: bpy.types.Object = writers.writer_for(
+                        HousePart.of(module)
+                    ).write_shared(
                         f"house_r{row_index}_s{seed}_{module.name}_{placement_count}",
-                        self._builder_for(module).build(),
+                        module.name,
+                        self._builder_for(module).build,
                         footprint_colors.color_for(module),
                     )
                     module_object.location.x = house_object.location.x + placement.position[0]
@@ -141,6 +153,8 @@ class HouseGridLayout:
                     module_object.rotation_euler.z = placement.rotation_steps * math.pi * 0.5
                     placed_objects.append(module_object)
                     placement_count += 1
+
+                writers.remove_empty_parts()
 
                 kind: str = "fixed" if seed in self._house_set.fixed_seeds else "random"
                 total_cells: int = len(footprint.main_cells) + sum(

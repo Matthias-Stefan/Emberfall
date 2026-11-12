@@ -78,9 +78,8 @@ class TestbedRunner:
         atlas: ModuleAtlas = ModuleAtlas(
             [module for row in catalog_rows for module, _ in row]
         )
-        house_writer: MeshWriter = MeshWriter(self._houses_collection)
         architect: Architect = Architect(Style("default", atlas))
-        HouseGridLayout(house_writer, architect, default_house_set).place()
+        HouseGridLayout(self._houses_collection, architect, default_house_set).place()
 
     def _build_catalog_rows(self) -> list[CatalogRow]:
         """Pairs every preset with its builder, one row per module kind.

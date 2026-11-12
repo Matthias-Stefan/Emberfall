@@ -31,6 +31,22 @@ def unload_packages() -> None:
             del sys.modules[module_name]
 
 
+def remove_collection_tree(collection: bpy.types.Collection) -> None:
+    """Deletes a collection with all its sub collections and objects, and the meshes left over.
+
+    Args:
+        collection: Collection to delete.
+    """
+    for child in list(collection.children):
+        remove_collection_tree(child)
+    for stale_object in list(collection.objects):
+        stale_data: bpy.types.ID | None = stale_object.data
+        bpy.data.objects.remove(stale_object, do_unlink=True)
+        if isinstance(stale_data, bpy.types.Mesh) and stale_data.users == 0:
+            bpy.data.meshes.remove(stale_data)
+    bpy.data.collections.remove(collection)
+
+
 def recreate_collection(name: str) -> bpy.types.Collection:
     """Deletes the named collection with all its content and creates it anew.
 
@@ -42,12 +58,7 @@ def recreate_collection(name: str) -> bpy.types.Collection:
     """
     existing: bpy.types.Collection | None = bpy.data.collections.get(name)
     if existing is not None:
-        for stale_object in list(existing.all_objects):
-            stale_data: bpy.types.ID | None = stale_object.data
-            bpy.data.objects.remove(stale_object, do_unlink=True)
-            if isinstance(stale_data, bpy.types.Mesh) and stale_data.users == 0:
-                bpy.data.meshes.remove(stale_data)
-        bpy.data.collections.remove(existing)
+        remove_collection_tree(existing)
 
     collection: bpy.types.Collection = bpy.data.collections.new(name)
     bpy.context.scene.collection.children.link(collection)
