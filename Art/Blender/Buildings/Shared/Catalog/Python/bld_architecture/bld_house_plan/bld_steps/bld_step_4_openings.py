@@ -5,6 +5,7 @@ __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 import random
+from collections.abc import Callable
 from dataclasses import replace
 
 from bld_modules import TOLERANCE, DoorModule, OpeningWallModule, WallModule, WindowModule
@@ -35,6 +36,7 @@ class OpeningPlacer:
         door_budget: int,
         openings: OpeningCreateInfo,
         random_source: random.Random,
+        door_filter: Callable[[ModulePlacement], bool] | None = None,
     ) -> ModuleRing:
         """Swaps walls of a ring against doors and windows.
 
@@ -43,6 +45,7 @@ class OpeningPlacer:
             door_budget: Most doors this ring may receive.
             openings: Rules for the window chance and the spacing.
             random_source: Random stream for the choices, separate from the wall widths.
+            door_filter: Tells whether a wall slot may become a door, None allows every slot.
 
         Returns:
             New ring with the same slots, some walls replaced by openings.
@@ -68,6 +71,8 @@ class OpeningPlacer:
             ):
                 continue
             ring_index, wall = walls[wall_position]
+            if door_filter is not None and not door_filter(placements[ring_index]):
+                continue
             doors: list[OpeningWallModule] = self._find_same_width(wall, DoorModule)
             if not doors:
                 continue

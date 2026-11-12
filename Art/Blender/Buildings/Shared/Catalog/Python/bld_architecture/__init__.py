@@ -29,6 +29,7 @@ from .bld_house_plan import (
     OutlineRing,
     OutlineSegment,
     Side,
+    StairPlacer,
     WallFiller,
 )
 from .bld_style import (
@@ -58,6 +59,7 @@ __all__: list[str] = [
     "OutlineRing",
     "OutlineSegment",
     "Side",
+    "StairPlacer",
     "Style",
     "WallFiller",
 ]

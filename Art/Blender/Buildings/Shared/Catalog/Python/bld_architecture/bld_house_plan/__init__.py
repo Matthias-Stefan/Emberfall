@@ -33,6 +33,9 @@ from .bld_steps.bld_step_4_openings import (
 from .bld_steps.bld_step_5_foundation import (
     FoundationPlanner,
 )
+from .bld_steps.bld_step_6_stairs import (
+    StairPlacer,
+)
 
 __all__: list[str] = [
     "CellRectangle",
@@ -51,5 +54,6 @@ __all__: list[str] = [
     "OutlineSegment",
     "Point",
     "Side",
+    "StairPlacer",
     "WallFiller",
 ]

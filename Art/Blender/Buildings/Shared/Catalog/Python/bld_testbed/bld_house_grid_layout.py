@@ -17,10 +17,11 @@ from bld_module_builder import (
     BaseModuleBuilder,
     DoorBuilder,
     PostBuilder,
+    StairBuilder,
     WallBuilder,
     WindowBuilder,
 )
-from bld_modules import BaseWallModule, DoorModule, PostModule, WindowModule
+from bld_modules import BaseWallModule, DoorModule, PostModule, StairModule, WindowModule
 
 from .bld_footprint_builder import FootprintBuilder
 from .bld_footprint_colors import footprint_colors
@@ -157,4 +158,6 @@ class HouseGridLayout:
             return DoorBuilder(module)
         if isinstance(module, WindowModule):
             return WindowBuilder(module)
+        if isinstance(module, StairModule):
+            return StairBuilder(module)
         return WallBuilder(module)  # type: ignore[arg-type]

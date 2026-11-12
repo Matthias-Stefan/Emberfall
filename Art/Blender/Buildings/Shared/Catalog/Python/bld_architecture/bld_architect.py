@@ -19,13 +19,14 @@ from .bld_house_plan import (
     OpeningPlacer,
     OutlineReader,
     OutlineRing,
+    StairPlacer,
     WallFiller,
 )
 from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in five steps: footprint, outline, walls, openings, foundation."""
+    """Designs building plans in six steps: footprint, outline, walls, openings, foundation, stairs."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.
@@ -42,6 +43,7 @@ class Architect:
         self._wall_filler: WallFiller = WallFiller(style.atlas)
         self._opening_placer: OpeningPlacer = OpeningPlacer(style.atlas)
         self._foundation_planner: FoundationPlanner = FoundationPlanner()
+        self._stair_placer: StairPlacer = StairPlacer(style.atlas)
 
     def design(self, create_info: BuildingCreateInfo) -> HousePlan:
         """Designs one building.
@@ -56,6 +58,11 @@ class Architect:
 
         outlines: tuple[OutlineRing, ...] = self._outline_reader.read(footprint)
 
+        # planned early, the doors need to know the foundation to leave room for their stairs
+        foundation: FoundationPlan | None = self._foundation_planner.plan(
+            outlines, create_info.foundation, self._style.wall_depth
+        )
+
         # own random stream, so changes to the walls never move the footprint of a seed
         wall_random: random.Random = random.Random(f"{create_info.seed}:walls")
         filled_rings: tuple[ModuleRing, ...] = tuple(
@@ -68,7 +75,11 @@ class Architect:
         rings: list[ModuleRing] = []
         for filled_ring in filled_rings:
             ring_with_openings: ModuleRing = self._opening_placer.place(
-                filled_ring, remaining_doors, create_info.openings, opening_random
+                filled_ring,
+                remaining_doors,
+                create_info.openings,
+                opening_random,
+                lambda wall: self._stair_placer.has_room(wall, filled_rings, foundation),
             )
             remaining_doors -= sum(
                 isinstance(placement.module, DoorModule)
@@ -76,10 +87,13 @@ class Architect:
             )
             rings.append(ring_with_openings)
 
-        foundation: FoundationPlan | None = self._foundation_planner.plan(
-            outlines, create_info.foundation, self._style.wall_depth
-        )
         lifted_rings: tuple[ModuleRing, ...] = tuple(
             self._foundation_planner.lift(ring, foundation) for ring in rings
         )
-        return HousePlan(footprint=footprint, rings=lifted_rings, foundation=foundation)
+
+        # own random stream again, so the stair variants never move walls or openings
+        stair_random: random.Random = random.Random(f"{create_info.seed}:stairs")
+        stair_rings: tuple[ModuleRing, ...] = self._stair_placer.place(
+            lifted_rings, foundation, stair_random
+        )
+        return HousePlan(footprint=footprint, rings=stair_rings, foundation=foundation)
