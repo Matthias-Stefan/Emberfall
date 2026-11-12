@@ -27,7 +27,7 @@ from .bld_style import Style
 
 
 class Architect:
-    """Designs building plans in seven steps: footprint, outline, walls, openings, foundation, stairs, floor."""
+    """Designs building plans in seven steps: footprint, outline, foundation, walls, openings, stairs, floor."""
 
     def __init__(self, style: Style) -> None:
         """Creates an architect.

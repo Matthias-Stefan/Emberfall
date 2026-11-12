@@ -7,16 +7,17 @@ __version__ = "0.1.0"
 from .bld_base_module import (
     BaseModule,
 )
+from .bld_base_slot_module import (
+    BaseSlotModule,
+    TOLERANCE,
+)
 
 from .bld_wall_modules import (
-    BaseWallModule,
     DoorModule,
     OpeningWallModule,
     PostModule,
     WallModule,
     WindowModule,
-
-    TOLERANCE,
 )
 
 from .bld_floor_modules import (
@@ -28,7 +29,7 @@ from .bld_stair_modules import (
 
 __all__: list[str] = [
     "BaseModule",
-    "BaseWallModule",
+    "BaseSlotModule",
     "DoorModule",
     "FloorModule",
     "OpeningWallModule",

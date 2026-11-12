@@ -4,10 +4,6 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
-from .bld_base_wall_module import (
-    BaseWallModule,
-    TOLERANCE
-)
 from .bld_opening_wall_module import (
     DoorModule,
     OpeningWallModule,
@@ -21,8 +17,6 @@ from .bld_wall_module import (
 )
 
 __all__: list[str] = [
-    "BaseWallModule",
-    "TOLERANCE",
     "DoorModule",
     "OpeningWallModule",
     "WindowModule",

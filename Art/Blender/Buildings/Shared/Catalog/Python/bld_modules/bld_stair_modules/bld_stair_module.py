@@ -6,14 +6,14 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from ..bld_wall_modules import BaseWallModule
+from ..bld_base_slot_module import BaseSlotModule
 
 MIN_STEPS_FOR_HANDRAIL: int = 3
 """Fewest steps a stair needs to get a handrail, below that the rail would look silly."""
 
 
 @dataclass(frozen=True)
-class StairModule(BaseWallModule):
+class StairModule(BaseSlotModule):
     """Immutable straight stair, the top step is level with the floor of the door.
 
     Local frame: centered in X and Y, floor at Z = 0, the steps climb towards +Y,

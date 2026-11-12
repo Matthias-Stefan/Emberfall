@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from enum import Enum
 
-from bld_modules import BaseWallModule, DoorModule, FloorModule, StairModule, WindowModule
+from bld_modules import BaseSlotModule, DoorModule, FloorModule, StairModule, WindowModule
 
 
 class HousePart(Enum):
@@ -26,7 +26,7 @@ class HousePart(Enum):
     """Stairs in front of the doors."""
 
     @staticmethod
-    def of(module: BaseWallModule) -> "HousePart":
+    def of(module: BaseSlotModule) -> "HousePart":
         """Finds the part a placed module belongs to.
 
         Args:

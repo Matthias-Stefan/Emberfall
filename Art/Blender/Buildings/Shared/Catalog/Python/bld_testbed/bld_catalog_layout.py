@@ -8,11 +8,11 @@ import bpy
 
 from bld_blender import MeshWriter
 from bld_module_builder import BaseModuleBuilder
-from bld_modules import BaseWallModule
+from bld_modules import BaseSlotModule
 
-from .bld_footprint_colors import footprint_colors
+from .bld_house_colors import house_colors
 
-CatalogRow = list[tuple[BaseWallModule, BaseModuleBuilder]]
+CatalogRow = list[tuple[BaseSlotModule, BaseModuleBuilder]]
 
 
 class CatalogLayout:
@@ -61,7 +61,7 @@ writer: Writer the module objects are created with.
 
             for module, builder in row:
                 module_object: bpy.types.Object = self._writer.write(
-                    module.name, builder.build(), footprint_colors.color_for(module)
+                    module.name, builder.build(), house_colors.color_for(module)
                 )
                 module_object.location.x = self._start_x - (cursor_x + module.width * 0.5)
                 module_object.location.y = row_y

@@ -24,13 +24,13 @@ from .bld_steps.bld_step_2_outline import (
     OutlineSegment,
     Point,
 )
-from .bld_steps.bld_step_3_walls import (
+from .bld_steps.bld_step_4_walls import (
     WallFiller,
 )
-from .bld_steps.bld_step_4_openings import (
+from .bld_steps.bld_step_5_openings import (
     OpeningPlacer,
 )
-from .bld_steps.bld_step_5_foundation import (
+from .bld_steps.bld_step_3_foundation import (
     FoundationPlanner,
 )
 from .bld_steps.bld_step_6_stairs import (

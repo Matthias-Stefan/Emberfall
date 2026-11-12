@@ -6,11 +6,11 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from ..bld_wall_modules import BaseWallModule
+from ..bld_base_slot_module import BaseSlotModule
 
 
 @dataclass(frozen=True)
-class FloorModule(BaseWallModule):
+class FloorModule(BaseSlotModule):
     """Immutable floor slab, a box with its bottom at Z = 0.
 
     Local frame: centered in X and Y. The inherited width and depth are the slab size on the

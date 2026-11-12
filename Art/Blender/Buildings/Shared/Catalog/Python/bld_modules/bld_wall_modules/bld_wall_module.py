@@ -6,11 +6,11 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from .bld_base_wall_module import BaseWallModule
+from ..bld_base_slot_module import BaseSlotModule
 
 
 @dataclass(frozen=True)
-class WallModule(BaseWallModule):
+class WallModule(BaseSlotModule):
     """Immutable plain closed wall."""
 
     @property

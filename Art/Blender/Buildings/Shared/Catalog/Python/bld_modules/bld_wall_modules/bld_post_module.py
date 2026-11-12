@@ -6,11 +6,11 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from .bld_base_wall_module import TOLERANCE, BaseWallModule
+from ..bld_base_slot_module import TOLERANCE, BaseSlotModule
 
 
 @dataclass(frozen=True)
-class PostModule(BaseWallModule):
+class PostModule(BaseSlotModule):
     """Immutable square post that covers a wall corner."""
 
     @property

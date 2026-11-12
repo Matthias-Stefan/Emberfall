@@ -23,7 +23,7 @@ from bld_module_builder import (
     WindowBuilder,
 )
 from bld_modules import (
-    BaseWallModule,
+    BaseSlotModule,
     DoorModule,
     FloorModule,
     PostModule,
@@ -32,7 +32,7 @@ from bld_modules import (
 )
 
 from .bld_footprint_builder import FootprintBuilder
-from .bld_footprint_colors import footprint_colors
+from .bld_house_colors import house_colors
 from .bld_house_part import HousePart
 from .bld_house_set import HouseSet
 from .bld_house_writers import HouseWriters
@@ -100,7 +100,7 @@ class HouseGridLayout:
                 house_object: bpy.types.Object = writers.writer_for(HousePart.FOOTPRINT).write(
                     f"house_r{row_index}_s{seed}_main",
                     builder.build_main(),
-                    footprint_colors.main,
+                    house_colors.main,
                 )
                 house_object.location.x = self._start_x + column_index * self._pitch_x
                 house_object.location.y = self._start_y + row_index * self._pitch_y
@@ -110,7 +110,7 @@ class HouseGridLayout:
                     extension_object: bpy.types.Object = writers.writer_for(HousePart.FOOTPRINT).write(
                         f"house_r{row_index}_s{seed}_ext{extension_index}",
                         builder.build_extension(extension_index),
-                        footprint_colors.extension,
+                        house_colors.extension,
                     )
                     extension_object.location.x = house_object.location.x
                     extension_object.location.y = house_object.location.y
@@ -124,7 +124,7 @@ class HouseGridLayout:
                         ).write(
                             f"house_r{row_index}_s{seed}_foundation{ring_index}",
                             foundation_builder.build_ring(ring_index),
-                            footprint_colors.foundation,
+                            house_colors.foundation,
                         )
                         foundation_object.location.x = house_object.location.x
                         foundation_object.location.y = house_object.location.y
@@ -137,7 +137,7 @@ class HouseGridLayout:
                 ]
                 all_placements.extend(plan.floor)
                 for placement in all_placements:
-                    module: BaseWallModule = placement.module
+                    module: BaseSlotModule = placement.module
                     # the same module always has the same geometry, so all objects share one mesh
                     module_object: bpy.types.Object = writers.writer_for(
                         HousePart.of(module)
@@ -145,7 +145,7 @@ class HouseGridLayout:
                         f"house_r{row_index}_s{seed}_{module.name}_{placement_count}",
                         module.name,
                         self._builder_for(module).build,
-                        footprint_colors.color_for(module),
+                        house_colors.color_for(module),
                     )
                     module_object.location.x = house_object.location.x + placement.position[0]
                     module_object.location.y = house_object.location.y + placement.position[1]
@@ -176,7 +176,7 @@ class HouseGridLayout:
         return f"{width}x{depth}"
 
     @staticmethod
-    def _builder_for(module: BaseWallModule) -> BaseModuleBuilder:
+    def _builder_for(module: BaseSlotModule) -> BaseModuleBuilder:
         if isinstance(module, PostModule):
             return PostBuilder(module)
         if isinstance(module, DoorModule):

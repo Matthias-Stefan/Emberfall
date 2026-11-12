@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from ..bld_base_wall_module import TOLERANCE
+from ...bld_base_slot_module import TOLERANCE
 from .bld_opening_wall_module import OpeningWallModule
 
 

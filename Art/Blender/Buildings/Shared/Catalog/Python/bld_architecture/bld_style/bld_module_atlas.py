@@ -4,13 +4,13 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
-from bld_modules import BaseWallModule
+from bld_modules import BaseSlotModule
 
 
 class ModuleAtlas:
     """Collection of the modules an architect may plan with."""
 
-    def __init__(self, modules: list[BaseWallModule] | None = None) -> None:
+    def __init__(self, modules: list[BaseSlotModule] | None = None) -> None:
         """Creates an atlas.
 
         Args:
@@ -19,11 +19,11 @@ class ModuleAtlas:
         Returns:
             None.
         """
-        self._modules: dict[str, BaseWallModule] = {}
+        self._modules: dict[str, BaseSlotModule] = {}
         for module in modules or []:
             self.register(module)
 
-    def register(self, module: BaseWallModule) -> None:
+    def register(self, module: BaseSlotModule) -> None:
         """Adds a module to the atlas.
 
         Args:
@@ -39,7 +39,7 @@ class ModuleAtlas:
             raise ValueError(f"Module '{module.name}' is already registered")
         self._modules[module.name] = module
 
-    def modules_of(self, module_type: type[BaseWallModule]) -> list[BaseWallModule]:
+    def modules_of(self, module_type: type[BaseSlotModule]) -> list[BaseSlotModule]:
         """Returns all modules of one kind, widest first.
 
         Args:
@@ -48,7 +48,7 @@ class ModuleAtlas:
         Returns:
             Matching modules sorted by width, descending.
         """
-        matches: list[BaseWallModule] = [
+        matches: list[BaseSlotModule] = [
             module for module in self._modules.values() if isinstance(module, module_type)
         ]
         return sorted(matches, key=lambda module: module.width, reverse=True)
