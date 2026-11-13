@@ -8,13 +8,17 @@ import random
 from dataclasses import replace
 
 from ...bld_create_info import BuildingCreateInfo
-from ..bld_house_plan import LevelPlan, ModulePlacement, ModuleRing
+from bld_modules import StairModule
+
+from ..bld_house_plan import BalconyPlan, LevelPlan, ModulePlacement, ModuleRing
 from .bld_step_1_footprint import Footprint
 from .bld_step_2_outline import OutlineReader, OutlineRing
 from .bld_step_4_walls import WallFiller
 from .bld_step_5_openings import OpeningPlacer
+from .bld_step_6_stairs import Rectangle, StairPlacer
 from .bld_step_8_floor import FloorPlanner
 from .bld_step_9_bays import BayPlacer
+from .bld_step_9_level_balconies import LevelBalconyPlacer
 from .bld_step_9_level_footprints import LevelFootprintDesigner
 from .bld_step_9_level_stairs import LevelStairPlacer, StairCandidate
 
@@ -32,6 +36,7 @@ class LevelPlanner:
         floor_planner: FloorPlanner,
         footprint_designer: LevelFootprintDesigner,
         bay_placer: BayPlacer,
+        balcony_placer: LevelBalconyPlacer,
         stair_placer: LevelStairPlacer,
     ) -> None:
         """Creates a level planner.
@@ -43,6 +48,7 @@ class LevelPlanner:
             floor_planner: Lays the floor slabs of a level.
             footprint_designer: Cuts the footprints of the levels out of the footprint below.
             bay_placer: Swaps walls of the levels against bays.
+            balcony_placer: Builds balconies on pillars in front of new doors.
             stair_placer: Finds the interior stairs up to a level.
 
         Returns:
@@ -54,6 +60,7 @@ class LevelPlanner:
         self._floor_planner: FloorPlanner = floor_planner
         self._footprint_designer: LevelFootprintDesigner = footprint_designer
         self._bay_placer: BayPlacer = bay_placer
+        self._balcony_placer: LevelBalconyPlacer = balcony_placer
         self._stair_placer: LevelStairPlacer = stair_placer
         return None
 
@@ -61,6 +68,7 @@ class LevelPlanner:
         self,
         building_info: BuildingCreateInfo,
         ground_rings: tuple[ModuleRing, ...],
+        ground_balconies: tuple[BalconyPlan, ...],
         ground_footprint: Footprint,
         ground_elevation: float,
         wall_height: float,
@@ -70,6 +78,7 @@ class LevelPlanner:
         Args:
             building_info is the building, its levels rules and seed decide what is planned.
             ground_rings are the rings of the ground floor, the interior stair keeps clear of them.
+            ground_balconies are the balconies of the ground floor, the pillars of the balconies above keep clear of them.
             ground_footprint is the footprint of the ground floor.
             ground_elevation is the height of the ground floor walls above the ground in m.
             wall_height is the height of one wall in m.
@@ -123,7 +132,8 @@ class LevelPlanner:
                 wall_random: random.Random = random.Random(f"{seed}:level{level_number}:walls")
                 opening_random: random.Random = random.Random(f"{seed}:level{level_number}:openings")
                 bay_random: random.Random = random.Random(f"{seed}:level{level_number}:bays")
-                for outline in self._outline_reader.read(footprint):
+                outlines: tuple[OutlineRing, ...] = self._outline_reader.read(footprint)
+                for outline in outlines:
                     ring: ModuleRing = self._ring_of(
                         outline, wall_elevation, building_info, wall_random, opening_random
                     )
@@ -132,6 +142,23 @@ class LevelPlanner:
                     )
                     rings.append(ring)
                     bay_floor.extend(strips)
+                if level_number == 1:
+                    # the pillars of a higher balcony would have to pass the balcony of the level below
+                    balcony_rings, balcony_extras, balcony_floor = self._balcony_placer.place(
+                        tuple(rings),
+                        outlines,
+                        self._cells_of(footprint),
+                        self._cells_of(lower_footprint),
+                        self._ground_obstacles(ground_rings, ground_balconies),
+                        slab_elevation,
+                        wall_elevation,
+                        levels_info,
+                        random.Random(f"{seed}:level{level_number}:balconies"),
+                    )
+                    rings = list(balcony_rings)
+                    if balcony_extras is not None:
+                        rings.append(balcony_extras)
+                    bay_floor.extend(balcony_floor)
             levels.append(
                 LevelPlan(
                     footprint=footprint,
@@ -247,6 +274,33 @@ class LevelPlanner:
                 for placement in with_windows.placements
             )
         )
+
+    @staticmethod
+    def _ground_obstacles(
+        ground_rings: tuple[ModuleRing, ...], ground_balconies: tuple[BalconyPlan, ...]
+    ) -> tuple[Rectangle, ...]:
+        """Collects the areas on the ground that pillars of a balcony must keep clear of.
+
+        Args:
+            ground_rings are the rings of the ground floor, their stairs count.
+            ground_balconies are the balconies of the ground floor, their blocks and stairs count.
+
+        Returns:
+            One area per stair, per balcony cell and per balcony stair.
+        """
+        obstacles: list[Rectangle] = [
+            StairPlacer.rectangle_of(placement, placement.module.width, placement.module.depth)
+            for ring in ground_rings
+            for placement in ring.placements
+            if isinstance(placement.module, StairModule)
+        ]
+        for balcony in ground_balconies:
+            obstacles.extend((cell_x, cell_y, cell_x + 1.0, cell_y + 1.0) for cell_x, cell_y in balcony.cells)
+            obstacles.extend(
+                StairPlacer.rectangle_of(stair, stair.module.width, stair.module.depth)
+                for stair in balcony.stairs
+            )
+        return tuple(obstacles)
 
     @staticmethod
     def _cells_of(footprint: Footprint) -> frozenset[Cell]:

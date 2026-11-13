@@ -13,15 +13,19 @@ from .bld_base_slot_module import (
 )
 
 from .bld_wall_modules import (
+    ArcWallModule,
+    ArcWindowModule,
     BayWallModule,
     DoorModule,
     OpeningWallModule,
+    PillarModule,
     PostModule,
     WallModule,
     WindowModule,
 )
 
 from .bld_floor_modules import (
+    ArcFloorModule,
     FloorModule,
 )
 from .bld_rail_modules import (
@@ -32,12 +36,16 @@ from .bld_stair_modules import (
 )
 
 __all__: list[str] = [
+    "ArcFloorModule",
+    "ArcWallModule",
+    "ArcWindowModule",
     "BayWallModule",
     "BaseModule",
     "BaseSlotModule",
     "DoorModule",
     "FloorModule",
     "OpeningWallModule",
+    "PillarModule",
     "PostModule",
     "RailModule",
     "StairModule",

@@ -14,6 +14,8 @@ from bld_architecture import Architect, Footprint, HousePlan, ModulePlacement
 from bld_blender import SharedMeshCache
 from bld_house_builder import BalconyBlockBuilder, FoundationBuilder
 from bld_module_builder import (
+    ArcFloorBuilder,
+    ArcWallBuilder,
     BaseModuleBuilder,
     DoorBuilder,
     FloorBuilder,
@@ -23,6 +25,8 @@ from bld_module_builder import (
     WindowBuilder,
 )
 from bld_modules import (
+    ArcFloorModule,
+    ArcWallModule,
     BaseSlotModule,
     DoorModule,
     FloorModule,
@@ -230,6 +234,10 @@ class HouseGridLayout:
 
     @staticmethod
     def _builder_for(module: BaseSlotModule) -> BaseModuleBuilder:
+        if isinstance(module, ArcWallModule):
+            return ArcWallBuilder(module)
+        if isinstance(module, ArcFloorModule):
+            return ArcFloorBuilder(module)
         if isinstance(module, PostModule):
             return PostBuilder(module)
         if isinstance(module, DoorModule):

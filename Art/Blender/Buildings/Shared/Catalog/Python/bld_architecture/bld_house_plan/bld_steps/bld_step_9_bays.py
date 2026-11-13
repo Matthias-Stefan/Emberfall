@@ -9,8 +9,12 @@ from dataclasses import replace
 
 from bld_modules import (
     TOLERANCE,
+    ArcFloorModule,
+    ArcWallModule,
+    ArcWindowModule,
     BayWallModule,
     FloorModule,
+    PillarModule,
     PostModule,
     WallModule,
     WindowModule,
@@ -66,7 +70,9 @@ class BayPlacer:
             return ring, ()
         strip: FloorModule | None = self._find_strip(bay_wall.width)
         posts: list[PostModule] = [
-            module for module in self._atlas.modules_of(PostModule) if isinstance(module, PostModule)
+            module
+            for module in self._atlas.modules_of(PostModule)
+            if isinstance(module, PostModule) and not isinstance(module, PillarModule)
         ]
         if strip is None or not posts:
             return ring, ()
@@ -100,9 +106,14 @@ class BayPlacer:
         ]
         floor: list[ModulePlacement] = []
         for index in sorted(chosen):
-            bay_placements, bay_floor = self._build(
-                ring.placements[index], bay_wall, strip, posts[0], slab_elevation, random_source
-            )
+            round_bay: tuple[list[ModulePlacement], list[ModulePlacement]] | None = None
+            if random_source.random() < levels_info.round_bay_chance:
+                round_bay = self._build_round(ring.placements[index], slab_elevation, random_source)
+            if round_bay is None:
+                round_bay = self._build(
+                    ring.placements[index], bay_wall, strip, posts[0], slab_elevation, random_source
+                )
+            bay_placements, bay_floor = round_bay
             placements.extend(bay_placements)
             floor.extend(bay_floor)
         return ModuleRing(tuple(placements)), tuple(floor)
@@ -222,6 +233,58 @@ class BayPlacer:
             )
         return placements, floor
 
+    def _build_round(
+        self,
+        wall: ModulePlacement,
+        slab_elevation: float,
+        random_source: random.Random,
+    ) -> tuple[list[ModulePlacement], list[ModulePlacement]] | None:
+        """Builds the round bay that replaces one wall.
+
+        The curved front takes the place of the wall and bulges out of the wall line, so it
+        needs no side walls and no posts, the posts at the ends of the wall stay.
+
+        Args:
+            wall is the wall or window that is replaced.
+            slab_elevation is the height of the bottom of the floor slabs in m.
+            random_source is the random stream that picks the front.
+
+        Returns:
+            The curved front and the floor slab under it, @c None if the atlas has no curved
+            wall or no curved floor as wide as the wall.
+        """
+        width: float = wall.module.width
+        fronts: list[ArcWallModule] = [
+            module
+            for module in self._atlas.modules_of(ArcWallModule)
+            if isinstance(module, ArcWallModule) and abs(module.width - width) <= TOLERANCE
+        ]
+        floors: list[ArcFloorModule] = [
+            module
+            for module in self._atlas.modules_of(ArcFloorModule)
+            if isinstance(module, ArcFloorModule) and abs(module.width - width) <= TOLERANCE
+        ]
+        if not fronts or not floors:
+            return None
+        # a window if the replaced module was one or by chance, a plain wall stays plain otherwise
+        windows: list[ArcWallModule] = [front for front in fronts if isinstance(front, ArcWindowModule)]
+        plain: list[ArcWallModule] = [front for front in fronts if not isinstance(front, ArcWindowModule)]
+        pool: list[ArcWallModule] = windows if windows and (not plain or random_source.random() < 0.7) else plain
+        front_module: ArcWallModule = random_source.choice(pool)
+        floor_module: ArcFloorModule = floors[0]
+
+        normal: tuple[int, int] = _FRONT[wall.rotation_steps]
+        floor_placement: ModulePlacement = ModulePlacement(
+            floor_module,
+            (
+                wall.position[0] + normal[0] * floor_module.depth * 0.5,
+                wall.position[1] + normal[1] * floor_module.depth * 0.5,
+            ),
+            wall.rotation_steps,
+            slab_elevation,
+        )
+        return [replace(wall, module=front_module)], [floor_placement]
+
     def _find_bay_wall(self) -> BayWallModule | None:
         """Finds the short wall for the sides of a bay.
 
@@ -229,7 +292,7 @@ class BayPlacer:
             The first bay wall of the atlas, @c None if there is none.
         """
         for module in self._atlas.modules_of(BayWallModule):
-            if isinstance(module, BayWallModule):
+            if isinstance(module, BayWallModule) and not isinstance(module, ArcWallModule):
                 return module
         return None
 

@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass
 
-from bld_modules import BaseSlotModule, DoorModule, FloorModule, PostModule, RailModule, StairModule, WindowModule
+from bld_modules import ArcWindowModule, BaseSlotModule, DoorModule, FloorModule, PostModule, RailModule, StairModule, WindowModule
 
 Color = tuple[float, float, float, float]
 
@@ -60,7 +60,7 @@ class HouseColors:
         """
         if isinstance(module, DoorModule):
             return self.door
-        if isinstance(module, WindowModule):
+        if isinstance(module, (WindowModule, ArcWindowModule)):
             return self.window
         if isinstance(module, PostModule):
             return self.post

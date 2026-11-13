@@ -9,6 +9,8 @@ import bpy
 from bld_architecture import Architect, ModuleAtlas, Style
 from bld_blender import MeshWriter
 from bld_module_builder import (
+    ArcFloorBuilder,
+    ArcWallBuilder,
     DoorBuilder,
     FloorBuilder,
     PostBuilder,
@@ -18,12 +20,20 @@ from bld_module_builder import (
     WindowBuilder,
 )
 from bld_presets import (
+    arc_floor_100x50x30,
+    arc_floor_200x50x30,
+    arc_wall_100x30x260_b50,
+    arc_wall_200x30x260_b50,
+    arc_window_100x30x260_b50,
+    arc_window_200x30x260_b50,
     bay_wall_50x30x260,
     door_200x30x260,
     door_400x30x260,
     floor_50x50x30,
     floor_100x50x30,
     floor_100x100x30,
+    pillar_40x40x260,
+    pillar_40x40x300,
     post_34x34x260,
     post_40x40x260,
     rail_100x8x90,
@@ -105,6 +115,8 @@ class TestbedRunner:
             (wall_200x30x260, WallBuilder(wall_200x30x260, **closed)),
             (wall_400x30x260, WallBuilder(wall_400x30x260, **closed)),
             (wall_600x30x260, WallBuilder(wall_600x30x260, **closed)),
+            (arc_wall_100x30x260_b50, ArcWallBuilder(arc_wall_100x30x260_b50, **closed)),
+            (arc_wall_200x30x260_b50, ArcWallBuilder(arc_wall_200x30x260_b50, **closed)),
         ]
         door_row: CatalogRow = [
             (door_200x30x260, DoorBuilder(door_200x30x260, **closed)),
@@ -114,10 +126,14 @@ class TestbedRunner:
             (window_100x30x260, WindowBuilder(window_100x30x260, **closed)),
             (window_200x30x260, WindowBuilder(window_200x30x260, **closed)),
             (window_400x30x260, WindowBuilder(window_400x30x260, **closed)),
+            (arc_window_100x30x260_b50, ArcWallBuilder(arc_window_100x30x260_b50, **closed)),
+            (arc_window_200x30x260_b50, ArcWallBuilder(arc_window_200x30x260_b50, **closed)),
         ]
         post_row: CatalogRow = [
             (post_34x34x260, PostBuilder(post_34x34x260)),
             (post_40x40x260, PostBuilder(post_40x40x260)),
+            (pillar_40x40x260, PostBuilder(pillar_40x40x260)),
+            (pillar_40x40x300, PostBuilder(pillar_40x40x300)),
         ]
         stair_row: CatalogRow = [
             (stair_100x60x40_2s_solid, StairBuilder(stair_100x60x40_2s_solid)),
@@ -134,6 +150,8 @@ class TestbedRunner:
             (floor_100x100x30, FloorBuilder(floor_100x100x30)),
             (floor_100x50x30, FloorBuilder(floor_100x50x30)),
             (floor_50x50x30, FloorBuilder(floor_50x50x30)),
+            (arc_floor_100x50x30, ArcFloorBuilder(arc_floor_100x50x30)),
+            (arc_floor_200x50x30, ArcFloorBuilder(arc_floor_200x50x30)),
         ]
         rail_row: CatalogRow = [
             (rail_100x8x90, RailBuilder(rail_100x8x90)),

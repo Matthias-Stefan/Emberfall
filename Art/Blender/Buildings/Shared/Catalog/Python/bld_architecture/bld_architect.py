@@ -18,6 +18,7 @@ from .bld_house_plan import (
     FoundationPlanner,
     HousePlan,
     BayPlacer,
+    LevelBalconyPlacer,
     LevelFootprintDesigner,
     LevelPlanner,
     LevelStairPlacer,
@@ -59,6 +60,7 @@ class Architect:
             self._floor_planner,
             LevelFootprintDesigner(),
             BayPlacer(style.atlas),
+            LevelBalconyPlacer(style.atlas, self._floor_planner),
             LevelStairPlacer(style.atlas),
         )
 
@@ -128,6 +130,7 @@ class Architect:
             levels=self._level_planner.plan(
                 create_info,
                 balcony_rings,
+                balconies,
                 footprint,
                 foundation.height if foundation is not None else 0.0,
                 self._style.wall_height,

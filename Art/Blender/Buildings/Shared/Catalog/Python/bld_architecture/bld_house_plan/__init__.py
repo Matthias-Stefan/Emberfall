@@ -47,6 +47,9 @@ from .bld_steps.bld_step_8_floor import (
 from .bld_steps.bld_step_9_bays import (
     BayPlacer,
 )
+from .bld_steps.bld_step_9_level_balconies import (
+    LevelBalconyPlacer,
+)
 from .bld_steps.bld_step_9_level_footprints import (
     LevelFootprintDesigner,
 )
@@ -69,6 +72,7 @@ __all__: list[str] = [
     "FoundationPlan",
     "FoundationPlanner",
     "HousePlan",
+    "LevelBalconyPlacer",
     "LevelFootprintDesigner",
     "LevelPlan",
     "LevelPlanner",

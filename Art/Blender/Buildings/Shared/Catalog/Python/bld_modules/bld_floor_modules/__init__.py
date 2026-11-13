@@ -4,10 +4,14 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_arc_floor_module import (
+    ArcFloorModule,
+)
 from .bld_floor_module import (
     FloorModule
 )
 
 __all__: list[str] = [
+    "ArcFloorModule",
     "FloorModule",
 ]

@@ -4,6 +4,12 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_arc_floor_builder import (
+    ArcFloorBuilder
+)
+from .bld_arc_wall_builder import (
+    ArcWallBuilder
+)
 from .bld_base_module_builder import (
     BaseModuleBuilder
 )
@@ -30,6 +36,8 @@ from .bld_window_builder import (
 )
 
 __all__: list[str] = [
+    "ArcFloorBuilder",
+    "ArcWallBuilder",
     "BaseModuleBuilder",
     "DoorBuilder",
     "FloorBuilder",
