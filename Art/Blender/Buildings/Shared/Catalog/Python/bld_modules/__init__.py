@@ -13,6 +13,7 @@ from .bld_base_slot_module import (
 )
 
 from .bld_wall_modules import (
+    BayWallModule,
     DoorModule,
     OpeningWallModule,
     PostModule,
@@ -31,6 +32,7 @@ from .bld_stair_modules import (
 )
 
 __all__: list[str] = [
+    "BayWallModule",
     "BaseModule",
     "BaseSlotModule",
     "DoorModule",

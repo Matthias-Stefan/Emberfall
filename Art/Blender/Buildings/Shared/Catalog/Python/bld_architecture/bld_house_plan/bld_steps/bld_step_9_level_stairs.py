@@ -1,10 +1,11 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: footprint and ground rings -> the interior stair that leads up to a level."""
+"""Step 9 helper: cells and rings of a level -> the interior stairs that lead up from it."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 import random
+from dataclasses import dataclass
 
 from bld_modules import TOLERANCE, DoorModule, StairModule
 
@@ -22,6 +23,18 @@ DOOR_CLEARANCE: float = 1.0
 """Free space in m around a door in which no interior stair may stand."""
 
 
+@dataclass(frozen=True)
+class StairCandidate:
+    """One stair that fits on a level, before it is matched with the level above."""
+
+    stair: ModulePlacement
+    """The stair, it starts on the floor of its level."""
+    covered: frozenset[Cell]
+    """Cells of the level below the stair stands on, they are a hole in the level above."""
+    landing: Cell
+    """Cell behind the top of the stair, it needs a floor on the level above."""
+
+
 class LevelStairPlacer:
     """Puts a straight stair inside the footprint that climbs from one floor to the next."""
 
@@ -37,28 +50,31 @@ class LevelStairPlacer:
         self._atlas: ModuleAtlas = atlas
         return None
 
-    def place(
+    def candidates(
         self,
-        footprint: Footprint,
-        ground_rings: tuple[ModuleRing, ...],
+        lower_cells: frozenset[Cell],
+        lower_rings: tuple[ModuleRing, ...],
         blocked_cells: frozenset[Cell],
         bottom_elevation: float,
         rise: float,
         random_source: random.Random,
-    ) -> tuple[ModulePlacement, frozenset[Cell]] | None:
-        """Chooses a stair and the cells of the floor above that it needs as a hole.
+    ) -> tuple[StairCandidate, ...]:
+        """Collects every place where a stair of the right rise fits on the level below.
+
+        The cells of the level above are not known yet, the caller keeps the candidates whose
+        landing cell lies on that level.
 
         Args:
-            footprint is the footprint, the stair stands on its cells.
-            ground_rings are the rings of the ground floor, the stair keeps clear of their walls and doors.
+            lower_cells are the cells of the level the stair starts on, the stair stands on them.
+            lower_rings are the rings of that level, the stair keeps clear of their walls and doors.
             blocked_cells are the cells the stair must not use, e.g. the hole of the level below.
             bottom_elevation is the height of the floor the stair starts on in m.
             rise is the height the stair climbs in m.
-            random_source is the random stream for the choice, separate from all other steps.
+            random_source is the random stream that picks the stair module, separate from all other steps.
 
         Returns:
-            The stair and the cells it covers, None if no stair of that rise fits.
-            There is a free cell in front of the bottom and behind the top of the stair.
+            One candidate per rotation and start cell, empty if no stair of that rise fits.
+            There is a free cell in front of the bottom of every candidate.
         """
         modules: list[StairModule] = [
             module
@@ -66,16 +82,14 @@ class LevelStairPlacer:
             if isinstance(module, StairModule) and abs(module.height - rise) <= TOLERANCE
         ]
         if not modules:
-            return None
+            return ()
         module: StairModule = random_source.choice(modules)
 
-        cells: frozenset[Cell] = footprint.main_cells.union(*footprint.extension_cells)
-        obstacles: list[Rectangle] = self._obstacles(ground_rings)
-
-        candidates: list[tuple[ModulePlacement, frozenset[Cell]]] = []
+        obstacles: list[Rectangle] = self._obstacles(lower_rings)
+        candidates: list[StairCandidate] = []
         for rotation_steps in range(4):
             climb: tuple[int, int] = _CLIMB[rotation_steps]
-            for cell_x, cell_y in sorted(cells):
+            for cell_x, cell_y in sorted(lower_cells):
                 # the stair starts at the edge of the cell it begins in and runs along the climb direction
                 start_x: float = cell_x + (0.0 if climb[0] > 0 else 1.0 if climb[0] < 0 else 0.5)
                 start_y: float = cell_y + (0.0 if climb[1] > 0 else 1.0 if climb[1] < 0 else 0.5)
@@ -85,24 +99,22 @@ class LevelStairPlacer:
                 )
                 stair: ModulePlacement = ModulePlacement(module, center, rotation_steps, bottom_elevation)
                 area: Rectangle = StairPlacer.rectangle_of(stair, module.width, module.depth)
-                covered: frozenset[Cell] = self._cells_under(area, cells)
-                if not covered or not covered <= cells or covered & blocked_cells:
+                covered: frozenset[Cell] = self._cells_under(area, lower_cells)
+                if not covered or not covered <= lower_cells or covered & blocked_cells:
                     continue
                 if any(StairPlacer.overlaps(area, obstacle) for obstacle in obstacles):
                     continue
-                # somebody has to be able to step on at the bottom and off at the top
+                # somebody has to be able to step on at the bottom
                 before: Cell = self._neighbor(start_x, start_y, (-climb[0], -climb[1]))
-                after: Cell = self._neighbor(
+                if before not in lower_cells or before in blocked_cells or before in covered:
+                    continue
+                landing: Cell = self._neighbor(
                     start_x + climb[0] * module.depth, start_y + climb[1] * module.depth, climb
                 )
-                if before not in cells or after not in cells:
+                if landing in covered:
                     continue
-                if before in blocked_cells or after in blocked_cells or after in covered or before in covered:
-                    continue
-                candidates.append((stair, covered))
-        if not candidates:
-            return None
-        return random_source.choice(candidates)
+                candidates.append(StairCandidate(stair, covered, landing))
+        return tuple(candidates)
 
     @staticmethod
     def _neighbor(point_x: float, point_y: float, direction: tuple[int, int]) -> Cell:

@@ -63,8 +63,10 @@ class BalconyPlan:
 
 @dataclass(frozen=True)
 class LevelPlan:
-    """One level above the ground floor: its walls and the floor slabs it stands on."""
+    """One level above the ground floor: its footprint, walls and the floor slabs it stands on."""
 
+    footprint: Footprint
+    """Cells of the level, they may differ from the cells of the level below and overhang it."""
     elevation: float
     """Height of the wall bottoms above the ground in m."""
     rings: tuple[ModuleRing, ...]

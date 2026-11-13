@@ -4,6 +4,9 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_bay_wall_module import (
+    BayWallModule,
+)
 from .bld_opening_wall_module import (
     DoorModule,
     OpeningWallModule,
@@ -17,6 +20,7 @@ from .bld_wall_module import (
 )
 
 __all__: list[str] = [
+    "BayWallModule",
     "DoorModule",
     "OpeningWallModule",
     "WindowModule",

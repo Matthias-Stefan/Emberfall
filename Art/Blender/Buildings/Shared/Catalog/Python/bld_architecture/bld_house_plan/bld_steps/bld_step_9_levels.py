@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9: outline and ground floor -> the levels above it, each one repeats the footprint."""
+"""Step 9: ground floor -> the levels above it, each with a footprint of its own and a stair up to it."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -7,79 +7,90 @@ __version__ = "0.1.0"
 import random
 from dataclasses import replace
 
-from ...bld_create_info import LevelsCreateInfo, OpeningCreateInfo
+from ...bld_create_info import BuildingCreateInfo
 from ..bld_house_plan import LevelPlan, ModulePlacement, ModuleRing
 from .bld_step_1_footprint import Footprint
-from .bld_step_2_outline import OutlineRing
+from .bld_step_2_outline import OutlineReader, OutlineRing
 from .bld_step_4_walls import WallFiller
 from .bld_step_5_openings import OpeningPlacer
 from .bld_step_8_floor import FloorPlanner
-from .bld_step_9_level_stairs import LevelStairPlacer
+from .bld_step_9_bays import BayPlacer
+from .bld_step_9_level_footprints import LevelFootprintDesigner
+from .bld_step_9_level_stairs import LevelStairPlacer, StairCandidate
+
+Cell = tuple[int, int]
 
 
 class LevelPlanner:
-    """Stacks levels on top of the ground floor, each with a floor slab layer and its own walls."""
+    """Stacks levels on top of the ground floor, each with a footprint of its own, a floor slab layer and a stair."""
 
     def __init__(
         self,
+        outline_reader: OutlineReader,
         wall_filler: WallFiller,
         opening_placer: OpeningPlacer,
         floor_planner: FloorPlanner,
+        footprint_designer: LevelFootprintDesigner,
+        bay_placer: BayPlacer,
         stair_placer: LevelStairPlacer,
     ) -> None:
         """Creates a level planner.
 
         Args:
+            outline_reader: Reads the outline rings of a level footprint.
             wall_filler: Fills the outline rings with posts and walls.
             opening_placer: Swaps walls against windows.
             floor_planner: Lays the floor slabs of a level.
-            stair_placer: Puts the interior stair up to a level.
+            footprint_designer: Cuts the footprints of the levels out of the footprint below.
+            bay_placer: Swaps walls of the levels against bays.
+            stair_placer: Finds the interior stairs up to a level.
 
         Returns:
             None.
         """
+        self._outline_reader: OutlineReader = outline_reader
         self._wall_filler: WallFiller = wall_filler
         self._opening_placer: OpeningPlacer = opening_placer
         self._floor_planner: FloorPlanner = floor_planner
+        self._footprint_designer: LevelFootprintDesigner = footprint_designer
+        self._bay_placer: BayPlacer = bay_placer
         self._stair_placer: LevelStairPlacer = stair_placer
         return None
 
     def plan(
         self,
-        create_info: LevelsCreateInfo,
-        openings: OpeningCreateInfo,
-        outlines: tuple[OutlineRing, ...],
+        building_info: BuildingCreateInfo,
         ground_rings: tuple[ModuleRing, ...],
-        footprint: Footprint,
+        ground_footprint: Footprint,
         ground_elevation: float,
         wall_height: float,
-        seed: int,
     ) -> tuple[LevelPlan, ...]:
         """Plans the levels above the ground floor.
 
         Args:
-            create_info is the rules for the levels.
-            openings is the rules for the windows, the levels get windows only for now.
-            outlines are the outline rings, every level has the same walls as the ground floor.
-            ground_rings are the rings of the ground floor, the interior stairs keep clear of them.
-            footprint is the footprint, its cells get floor slabs.
+            building_info is the building, its levels rules and seed decide what is planned.
+            ground_rings are the rings of the ground floor, the interior stair keeps clear of them.
+            ground_footprint is the footprint of the ground floor.
             ground_elevation is the height of the ground floor walls above the ground in m.
             wall_height is the height of one wall in m.
-            seed is the seed of the building, every level gets its own random streams from it.
 
         Returns:
             One plan per level from bottom to top, empty if there are no upper levels or the atlas
-            has no floor slab of a whole cell.
+            has no floor slab of a whole cell. Planning stops below the first level that no stair
+            can reach, so every returned level can be walked up to.
         """
+        levels_info = building_info.levels
         slab_height: float | None = self._floor_planner.slab_height
-        if create_info.upper_count == 0 or slab_height is None:
+        if levels_info.upper_count == 0 or slab_height is None:
             return ()
 
         levels: list[LevelPlan] = []
         rise: float = wall_height + slab_height
+        lower_footprint: Footprint = ground_footprint
+        lower_rings: tuple[ModuleRing, ...] = ground_rings
         lower_floor_top: float = ground_elevation
-        blocked_cells: frozenset[tuple[int, int]] = frozenset()
-        for level_number in range(1, create_info.upper_count + 1):
+        blocked_cells: frozenset[Cell] = frozenset()
+        for level_number in range(1, levels_info.upper_count + 1):
             # the slabs lie on top of the walls below, the walls of the level on top of the slabs
             slab_elevation: float = (
                 ground_elevation + level_number * wall_height + (level_number - 1) * slab_height
@@ -87,40 +98,164 @@ class LevelPlanner:
             wall_elevation: float = slab_elevation + slab_height
 
             # own random streams per level, so levels never move the ground floor of a seed
+            seed: int = building_info.seed
             stair_random: random.Random = random.Random(f"{seed}:level{level_number}:stairs")
-            placed: tuple[ModulePlacement, frozenset[tuple[int, int]]] | None = self._stair_placer.place(
-                footprint, ground_rings, blocked_cells, lower_floor_top, rise, stair_random
+            footprint_random: random.Random = random.Random(f"{seed}:level{level_number}:footprint")
+            candidates: tuple[StairCandidate, ...] = self._stair_placer.candidates(
+                self._cells_of(lower_footprint),
+                lower_rings,
+                blocked_cells,
+                lower_floor_top,
+                rise,
+                stair_random,
             )
-            stairs: tuple[ModulePlacement, ...] = () if placed is None else (placed[0],)
-            hole: frozenset[tuple[int, int]] = frozenset() if placed is None else placed[1]
+            chosen: tuple[Footprint, StairCandidate] | None = self._choose(
+                building_info, lower_footprint, candidates, footprint_random, stair_random
+            )
+            if chosen is None:
+                break  # nothing leads up here, a level nobody can reach is not built
+            footprint, candidate = chosen
+            hole: frozenset[Cell] = candidate.covered & self._cells_of(footprint)
 
             rings: list[ModuleRing] = []
-            if create_info.build_walls:
+            bay_floor: list[ModulePlacement] = []
+            if levels_info.build_walls:
                 wall_random: random.Random = random.Random(f"{seed}:level{level_number}:walls")
                 opening_random: random.Random = random.Random(f"{seed}:level{level_number}:openings")
-                for outline in outlines:
-                    filled: ModuleRing = self._wall_filler.fill(outline, wall_random)
-                    with_windows: ModuleRing = self._opening_placer.place(
-                        filled, 0, openings, opening_random
+                bay_random: random.Random = random.Random(f"{seed}:level{level_number}:bays")
+                for outline in self._outline_reader.read(footprint):
+                    ring: ModuleRing = self._ring_of(
+                        outline, wall_elevation, building_info, wall_random, opening_random
                     )
-                    rings.append(
-                        ModuleRing(
-                            tuple(
-                                replace(placement, elevation=wall_elevation)
-                                for placement in with_windows.placements
-                            )
-                        )
+                    ring, strips = self._bay_placer.place(
+                        ring, outline, slab_elevation, levels_info, bay_random
                     )
+                    rings.append(ring)
+                    bay_floor.extend(strips)
             levels.append(
                 LevelPlan(
+                    footprint=footprint,
                     elevation=wall_elevation,
                     rings=tuple(rings),
-                    floor=self._floor_planner.lay(footprint, slab_elevation, hole),
-                    stairs=stairs,
+                    floor=(
+                        *self._floor_planner.lay(footprint, slab_elevation, hole),
+                        *bay_floor,
+                    ),
+                    stairs=(candidate.stair,),
                     hole=hole,
                 )
             )
             # the stair to the next level starts on this floor and must not stand on this hole
+            lower_footprint = footprint
+            lower_rings = tuple(rings)
             lower_floor_top = wall_elevation
             blocked_cells = hole
         return tuple(levels)
+
+    def _choose(
+        self,
+        building_info: BuildingCreateInfo,
+        lower_footprint: Footprint,
+        candidates: tuple[StairCandidate, ...],
+        footprint_random: random.Random,
+        stair_random: random.Random,
+    ) -> tuple[Footprint, StairCandidate] | None:
+        """Picks the footprint of a level together with the stair that leads up to it.
+
+        A new footprint is only taken if one stair lands on it. If none of the rolled footprints
+        works, the level repeats the footprint of the level below.
+
+        Args:
+            building_info is the building the footprint is rolled for.
+            lower_footprint is the footprint of the level below.
+            candidates are the stairs that fit on the level below.
+            footprint_random is the random stream that rolls the footprints.
+            stair_random is the random stream that picks the stair.
+
+        Returns:
+            The footprint and its stair, None if not even the footprint of the level below can be reached.
+        """
+        levels_info = building_info.levels
+        for option in self._footprint_designer.options(levels_info, lower_footprint, footprint_random):
+            usable: list[StairCandidate] = self._landing_on(
+                candidates, self._cells_of(option), levels_info.build_walls
+            )
+            if usable:
+                return option, stair_random.choice(usable)
+        usable = self._landing_on(candidates, self._cells_of(lower_footprint), levels_info.build_walls)
+        return (lower_footprint, stair_random.choice(usable)) if usable else None
+
+    @staticmethod
+    def _landing_on(
+        candidates: tuple[StairCandidate, ...], cells: frozenset[Cell], keep_off_walls: bool
+    ) -> list[StairCandidate]:
+        """Filters the stairs whose landing cell has a floor.
+
+        Args:
+            candidates are the stairs to filter.
+            cells are the cells of the level above.
+            keep_off_walls is whether the hole of the stair must lie clear of the walls of the level above.
+
+        Returns:
+            The candidates that land on one of the cells. With keep_off_walls only those whose
+            hole has no cell at the outline of the level above, the walls would hang over it.
+        """
+        interior: frozenset[Cell] = frozenset(
+            (cell_x, cell_y)
+            for cell_x, cell_y in cells
+            if all(
+                neighbor in cells
+                for neighbor in (
+                    (cell_x + 1, cell_y), (cell_x - 1, cell_y), (cell_x, cell_y + 1), (cell_x, cell_y - 1)
+                )
+            )
+        )
+        return [
+            candidate
+            for candidate in candidates
+            if candidate.landing in cells
+            and (not keep_off_walls or (candidate.covered & cells) <= interior)
+        ]
+
+    def _ring_of(
+        self,
+        outline: OutlineRing,
+        wall_elevation: float,
+        building_info: BuildingCreateInfo,
+        wall_random: random.Random,
+        opening_random: random.Random,
+    ) -> ModuleRing:
+        """Builds the walls of one outline of a level.
+
+        Args:
+            outline is the outline ring to fill.
+            wall_elevation is the height of the wall bottoms in m.
+            building_info is the building, its openings rules apply, the levels get windows only for now.
+            wall_random is the random stream of the walls.
+            opening_random is the random stream of the openings.
+
+        Returns:
+            The ring with all placements lifted to the wall elevation.
+        """
+        filled: ModuleRing = self._wall_filler.fill(outline, wall_random)
+        with_windows: ModuleRing = self._opening_placer.place(
+            filled, 0, building_info.openings, opening_random
+        )
+        return ModuleRing(
+            tuple(
+                replace(placement, elevation=wall_elevation)
+                for placement in with_windows.placements
+            )
+        )
+
+    @staticmethod
+    def _cells_of(footprint: Footprint) -> frozenset[Cell]:
+        """Collects all cells of a footprint.
+
+        Args:
+            footprint is the footprint to read.
+
+        Returns:
+            The cells of the main building and all extensions.
+        """
+        return footprint.main_cells.union(*footprint.extension_cells)

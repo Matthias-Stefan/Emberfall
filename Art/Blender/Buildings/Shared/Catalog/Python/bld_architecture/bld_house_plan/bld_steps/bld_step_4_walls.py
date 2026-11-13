@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 import random
 
-from bld_modules import TOLERANCE, PostModule, WallModule
+from bld_modules import TOLERANCE, BayWallModule, PostModule, WallModule
 
 from ...bld_style import ModuleAtlas
 from ..bld_house_plan import ModulePlacement, ModuleRing
@@ -46,10 +46,10 @@ class WallFiller:
         self._atlas: ModuleAtlas = atlas
         self._min_post_spacing: float = min_post_spacing
 
-        # one wall per width in cm, the atlas lists the first of equal widths first
+        # one wall per width in cm, the atlas lists the first of equal widths first, bay walls are no filler
         self._walls_by_width: dict[int, WallModule] = {}
         for module in atlas.modules_of(WallModule):
-            if isinstance(module, WallModule):
+            if isinstance(module, WallModule) and not isinstance(module, BayWallModule):
                 self._walls_by_width.setdefault(round(module.width * 100), module)
         if not self._walls_by_width:
             raise ValueError("The atlas contains no wall module")

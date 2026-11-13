@@ -4,13 +4,15 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
-from bld_modules import WallModule
+from bld_modules import BayWallModule, WallModule
 
+bay_wall_50x30x260: BayWallModule = BayWallModule(width=0.5, height=2.6, depth=0.3)
 wall_100x30x260: WallModule = WallModule(width=1.0, height=2.6, depth=0.3)
 wall_200x30x260: WallModule = WallModule(width=2.0, height=2.6, depth=0.3)
 wall_400x30x260: WallModule = WallModule(width=4.0, height=2.6, depth=0.3)
 wall_600x30x260: WallModule = WallModule(width=6.0, height=2.6, depth=0.3)
 
+assert bay_wall_50x30x260.name == "bay_wall_50x30x260"
 assert wall_100x30x260.name == "wall_100x30x260"
 assert wall_200x30x260.name == "wall_200x30x260"
 assert wall_400x30x260.name == "wall_400x30x260"

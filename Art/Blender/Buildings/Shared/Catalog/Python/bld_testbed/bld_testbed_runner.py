@@ -18,6 +18,7 @@ from bld_module_builder import (
     WindowBuilder,
 )
 from bld_presets import (
+    bay_wall_50x30x260,
     door_200x30x260,
     door_400x30x260,
     floor_50x50x30,
@@ -99,6 +100,7 @@ class TestbedRunner:
         closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
 
         wall_row: CatalogRow = [
+            (bay_wall_50x30x260, WallBuilder(bay_wall_50x30x260, **closed)),
             (wall_100x30x260, WallBuilder(wall_100x30x260, **closed)),
             (wall_200x30x260, WallBuilder(wall_200x30x260, **closed)),
             (wall_400x30x260, WallBuilder(wall_400x30x260, **closed)),
