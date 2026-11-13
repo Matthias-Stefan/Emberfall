@@ -8,16 +8,18 @@ import random
 from dataclasses import replace
 
 from ...bld_create_info import BuildingCreateInfo
-from bld_modules import StairModule
+from bld_modules import ArcWallModule, StairModule
 
-from ..bld_house_plan import BalconyPlan, LevelPlan, ModulePlacement, ModuleRing
+from ..bld_house_plan import BalconyPlan, CornerCut, LevelPlan, ModulePlacement, ModuleRing
 from .bld_step_1_footprint import Footprint
 from .bld_step_2_outline import OutlineReader, OutlineRing
 from .bld_step_4_walls import WallFiller
 from .bld_step_5_openings import OpeningPlacer
 from .bld_step_6_stairs import Rectangle, StairPlacer
 from .bld_step_8_floor import FloorPlanner
+from .bld_step_9_apsis import ApsisPlacer
 from .bld_step_9_bays import BayPlacer
+from .bld_step_9_chamfers import ChamferPlacer
 from .bld_step_9_brackets import BracketPlacer
 from .bld_step_9_level_balconies import LevelBalconyPlacer
 from .bld_step_9_level_footprints import LevelFootprintDesigner
@@ -36,6 +38,8 @@ class LevelPlanner:
         opening_placer: OpeningPlacer,
         floor_planner: FloorPlanner,
         footprint_designer: LevelFootprintDesigner,
+        apsis_placer: ApsisPlacer,
+        chamfer_placer: ChamferPlacer,
         bay_placer: BayPlacer,
         bracket_placer: BracketPlacer,
         balcony_placer: LevelBalconyPlacer,
@@ -49,6 +53,8 @@ class LevelPlanner:
             opening_placer: Swaps walls against windows.
             floor_planner: Lays the floor slabs of a level.
             footprint_designer: Cuts the footprints of the levels out of the footprint below.
+            apsis_placer: Carries the round ends of the level below up.
+            chamfer_placer: Carries the cut corners of the level below up.
             bay_placer: Swaps walls of the levels against bays.
             bracket_placer: Puts braces under the bays.
             balcony_placer: Builds balconies on pillars in front of new doors.
@@ -62,6 +68,8 @@ class LevelPlanner:
         self._opening_placer: OpeningPlacer = opening_placer
         self._floor_planner: FloorPlanner = floor_planner
         self._footprint_designer: LevelFootprintDesigner = footprint_designer
+        self._apsis_placer: ApsisPlacer = apsis_placer
+        self._chamfer_placer: ChamferPlacer = chamfer_placer
         self._bay_placer: BayPlacer = bay_placer
         self._bracket_placer: BracketPlacer = bracket_placer
         self._balcony_placer: LevelBalconyPlacer = balcony_placer
@@ -102,7 +110,8 @@ class LevelPlanner:
         lower_footprint: Footprint = ground_footprint
         lower_rings: tuple[ModuleRing, ...] = ground_rings
         lower_floor_top: float = ground_elevation
-        blocked_cells: frozenset[Cell] = frozenset()
+        # a stair must not stand in a corner that is cut off
+        blocked_cells: frozenset[Cell] = ChamferPlacer.cells_of(ChamferPlacer.cuts_of(ground_rings))
         for level_number in range(1, levels_info.upper_count + 1):
             # the slabs lie on top of the walls below, the walls of the level on top of the slabs
             slab_elevation: float = (
@@ -132,6 +141,7 @@ class LevelPlanner:
 
             rings: list[ModuleRing] = []
             bay_floor: list[ModulePlacement] = []
+            level_cuts: list[CornerCut] = []
             if levels_info.build_walls:
                 wall_random: random.Random = random.Random(f"{seed}:level{level_number}:walls")
                 opening_random: random.Random = random.Random(f"{seed}:level{level_number}:openings")
@@ -141,6 +151,24 @@ class LevelPlanner:
                     ring: ModuleRing = self._ring_of(
                         outline, wall_elevation, building_info, wall_random, opening_random
                     )
+                    ring, round_floor = self._apsis_placer.continue_up(
+                        ring,
+                        outline,
+                        lower_rings,
+                        wall_elevation,
+                        slab_elevation,
+                        self._floor_planner.slab_height or 0.0,
+                    )
+                    bay_floor.extend(round_floor)
+                    ring, cuts = self._chamfer_placer.continue_up(
+                        ring,
+                        outline,
+                        lower_rings,
+                        self._cells_of(footprint),
+                        candidate.covered | {candidate.landing} | hole,
+                        random.Random(f"{seed}:level{level_number}:chamfers"),
+                    )
+                    level_cuts.extend(cuts)
                     ring, strips = self._bay_placer.place(
                         ring, outline, slab_elevation, levels_info, bay_random
                     )
@@ -154,7 +182,7 @@ class LevelPlanner:
                         outlines,
                         self._cells_of(footprint),
                         self._cells_of(lower_footprint),
-                        self._ground_obstacles(ground_rings, ground_balconies),
+                        self.ground_obstacles(ground_rings, ground_balconies),
                         slab_elevation,
                         wall_elevation,
                         levels_info,
@@ -170,7 +198,9 @@ class LevelPlanner:
                     elevation=wall_elevation,
                     rings=tuple(rings),
                     floor=(
-                        *self._floor_planner.lay(footprint, slab_elevation, hole),
+                        *self._chamfer_placer.cut_floor(
+                            self._floor_planner.lay(footprint, slab_elevation, hole), tuple(level_cuts)
+                        ),
                         *bay_floor,
                     ),
                     stairs=(candidate.stair,),
@@ -181,7 +211,7 @@ class LevelPlanner:
             lower_footprint = footprint
             lower_rings = tuple(rings)
             lower_floor_top = wall_elevation
-            blocked_cells = hole
+            blocked_cells = hole | ChamferPlacer.cells_of(tuple(level_cuts))
         return tuple(levels)
 
     def _choose(
@@ -281,7 +311,7 @@ class LevelPlanner:
         )
 
     @staticmethod
-    def _ground_obstacles(
+    def ground_obstacles(
         ground_rings: tuple[ModuleRing, ...], ground_balconies: tuple[BalconyPlan, ...]
     ) -> tuple[Rectangle, ...]:
         """Collects the areas on the ground that pillars of a balcony must keep clear of.
@@ -299,6 +329,13 @@ class LevelPlanner:
             for placement in ring.placements
             if isinstance(placement.module, StairModule)
         ]
+        # the half circles of round ends reach out of the wall line
+        obstacles.extend(
+            LevelBalconyPlacer.rectangle_of_wall(placement)
+            for ring in ground_rings
+            for placement in ring.placements
+            if isinstance(placement.module, ArcWallModule)
+        )
         for balcony in ground_balconies:
             obstacles.extend((cell_x, cell_y, cell_x + 1.0, cell_y + 1.0) for cell_x, cell_y in balcony.cells)
             obstacles.extend(

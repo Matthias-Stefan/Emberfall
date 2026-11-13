@@ -93,7 +93,7 @@ class FloorPlanner:
         """
         for module in self._atlas.modules_of(FloorModule):
             if (
-                isinstance(module, FloorModule)
+                type(module) is FloorModule
                 and abs(module.width - CELL_SIZE) <= TOLERANCE
                 and abs(module.depth - CELL_SIZE) <= TOLERANCE
             ):

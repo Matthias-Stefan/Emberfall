@@ -4,9 +4,11 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+import math
+
 import bmesh
 
-from bld_architecture import FoundationPlan, OutlineRing, Side
+from bld_architecture import CornerCut, FoundationPlan, OutlineRing, Side
 
 # outward unit normal per side, Y points up in cell space
 _NORMALS: dict[Side, tuple[int, int]] = {
@@ -15,6 +17,23 @@ _NORMALS: dict[Side, tuple[int, int]] = {
     Side.SOUTH: (0, -1),
     Side.WEST: (-1, 0),
 }
+
+
+# outward unit normal per rotation of a module front: south, east, north, west
+_NORMALS_BY_ROTATION: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def _unit(vector: tuple[float, float]) -> tuple[float, float]:
+    """Scales a vector to length one.
+
+    Args:
+        vector is the vector.
+
+    Returns:
+        The vector with length one.
+    """
+    length: float = math.hypot(vector[0], vector[1])
+    return vector[0] / length, vector[1] / length
 
 
 class FoundationBuilder:
@@ -62,19 +81,50 @@ class FoundationBuilder:
         inner_bottom: list[bmesh.types.BMVert] = []
         inner_top: list[bmesh.types.BMVert] = []
 
-        count: int = len(ring.corners)
+        # one point per corner with the unit normals of the walls before and after it, a cut corner
+        # becomes two points with the diagonal between them
+        corner_points: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
         for corner_index, corner in enumerate(ring.corners):
-            # both walls at a corner are perpendicular, their normals add up to the diagonal
-            incoming: tuple[int, int] = _NORMALS[ring.segments[corner_index - 1].outward]
-            leaving: tuple[int, int] = _NORMALS[ring.segments[corner_index].outward]
-            direction_x: int = incoming[0] + leaving[0]
-            direction_y: int = incoming[1] + leaving[1]
-            point_x: float = corner.point[0]
-            point_y: float = corner.point[1]
-            outer_x: float = point_x + direction_x * outer_reach
-            outer_y: float = point_y + direction_y * outer_reach
-            inner_x: float = point_x - direction_x * inner_reach
-            inner_y: float = point_y - direction_y * inner_reach
+            incoming: tuple[float, float] = _unit(_NORMALS[ring.segments[corner_index - 1].outward])
+            leaving: tuple[float, float] = _unit(_NORMALS[ring.segments[corner_index].outward])
+            point: tuple[float, float] = (float(corner.point[0]), float(corner.point[1]))
+            cut: CornerCut | None = next(
+                (candidate for candidate in self._foundation.cuts if candidate.point == point), None
+            )
+            if cut is None:
+                corner_points.append((point, incoming, leaving))
+                continue
+            diagonal: tuple[float, float] = _unit(
+                (_NORMALS_BY_ROTATION[cut.rotation][0] + _NORMALS_BY_ROTATION[(cut.rotation + 1) % 4][0],
+                 _NORMALS_BY_ROTATION[cut.rotation][1] + _NORMALS_BY_ROTATION[(cut.rotation + 1) % 4][1])
+            )
+            back: tuple[int, int] = _NORMALS_BY_ROTATION[(cut.rotation + 1) % 4]
+            along: tuple[int, int] = _NORMALS_BY_ROTATION[(cut.rotation + 2) % 4]
+            corner_points.append(
+                (
+                    (point[0] - back[0] * cut.size, point[1] - back[1] * cut.size),
+                    incoming,
+                    diagonal,
+                )
+            )
+            corner_points.append(
+                (
+                    (point[0] + along[0] * cut.size, point[1] + along[1] * cut.size),
+                    diagonal,
+                    leaving,
+                )
+            )
+
+        count: int = len(corner_points)
+        for point, incoming, leaving in corner_points:
+            # the offset along the sum of both normals that keeps the band the same width on both walls
+            scale: float = 1.0 / (1.0 + incoming[0] * leaving[0] + incoming[1] * leaving[1])
+            direction_x: float = (incoming[0] + leaving[0]) * scale
+            direction_y: float = (incoming[1] + leaving[1]) * scale
+            outer_x: float = point[0] + direction_x * outer_reach
+            outer_y: float = point[1] + direction_y * outer_reach
+            inner_x: float = point[0] - direction_x * inner_reach
+            inner_y: float = point[1] - direction_y * inner_reach
             outer_bottom.append(bm.verts.new((outer_x, outer_y, 0.0)))
             outer_top.append(bm.verts.new((outer_x, outer_y, height)))
             inner_bottom.append(bm.verts.new((inner_x, inner_y, 0.0)))

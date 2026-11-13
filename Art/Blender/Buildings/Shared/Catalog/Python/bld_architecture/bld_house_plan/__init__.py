@@ -6,6 +6,7 @@ __version__ = "0.1.0"
 
 from .bld_house_plan import (
     BalconyPlan,
+    CornerCut,
     FoundationPlan,
     HousePlan,
     LevelPlan,
@@ -44,11 +45,17 @@ from .bld_steps.bld_step_7_balconies import (
 from .bld_steps.bld_step_8_floor import (
     FloorPlanner,
 )
+from .bld_steps.bld_step_9_apsis import (
+    ApsisPlacer,
+)
 from .bld_steps.bld_step_9_bays import (
     BayPlacer,
 )
 from .bld_steps.bld_step_9_brackets import (
     BracketPlacer,
+)
+from .bld_steps.bld_step_9_chamfers import (
+    ChamferPlacer,
 )
 from .bld_steps.bld_step_9_level_balconies import (
     LevelBalconyPlacer,
@@ -64,8 +71,10 @@ from .bld_steps.bld_step_9_levels import (
 )
 
 __all__: list[str] = [
+    "ApsisPlacer",
     "BalconyPlan",
     "BayPlacer",
+    "ChamferPlacer",
     "BracketPlacer",
     "BalconyPlanner",
     "CellRectangle",
@@ -73,6 +82,7 @@ __all__: list[str] = [
     "Footprint",
     "FloorPlanner",
     "FootprintDesigner",
+    "CornerCut",
     "FoundationPlan",
     "FoundationPlanner",
     "HousePlan",

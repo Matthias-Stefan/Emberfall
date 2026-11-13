@@ -47,29 +47,20 @@ class ArcWallBuilder(BaseModuleBuilder):
             The caller owns it and must call free() on it.
         """
         module: ArcWallModule = self._arc_module
-        straight: BaseModuleBuilder
-        if isinstance(module, ArcWindowModule):
-            straight = WindowBuilder(
-                WindowModule(
-                    width=module.width,
-                    height=module.height,
-                    depth=module.depth,
-                    opening_width=module.opening_width,
-                    opening_height=module.opening_height,
-                    sill_height=module.sill_height,
-                ),
-                self._close_top,
-                self._close_bottom,
-                self._close_ends,
-            )
-        else:
-            straight = WallBuilder(
-                WallModule(width=module.width, height=module.height, depth=module.depth),
-                self._close_top,
-                self._close_bottom,
-                self._close_ends,
-            )
-        bm: bmesh.types.BMesh = straight.build()
+        sections: int = module.opening_count if isinstance(module, ArcWindowModule) else 1
+        bm: bmesh.types.BMesh = bmesh.new()
+        for section in range(sections):
+            section_bm: bmesh.types.BMesh = self._straight_section(module, sections).build()
+            offset: float = (section - (sections - 1) * 0.5) * module.width / sections
+            vertex_map: dict[bmesh.types.BMVert, bmesh.types.BMVert] = {
+                vertex: bm.verts.new((vertex.co.x + offset, vertex.co.y, vertex.co.z))
+                for vertex in section_bm.verts
+            }
+            for face in section_bm.faces:
+                bm.faces.new([vertex_map[vertex] for vertex in face.verts])
+            section_bm.free()
+        if sections > 1:
+            bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=TOLERANCE)
 
         # cut every edge that runs along X, so the bend has vertices to move
         along_x: list[bmesh.types.BMEdge] = [
@@ -79,9 +70,43 @@ class ArcWallBuilder(BaseModuleBuilder):
             and abs(edge.verts[0].co.y - edge.verts[1].co.y) <= TOLERANCE
             and abs(edge.verts[0].co.z - edge.verts[1].co.z) <= TOLERANCE
         ]
-        bmesh.ops.subdivide_edges(bm, edges=along_x, cuts=module.segments - 1, use_grid_fill=True)
+        cuts: int = max(1, -(-module.segments // sections) - 1)
+        bmesh.ops.subdivide_edges(bm, edges=along_x, cuts=cuts, use_grid_fill=True)
         self._bend(bm, module.width * 0.5, module.bulge)
         return bm
+
+    def _straight_section(self, module: ArcWallModule, sections: int) -> BaseModuleBuilder:
+        """Creates the builder of one straight section of the wall.
+
+        Args:
+            module is the curved module.
+            sections is the number of equal sections along the chord.
+
+        Returns:
+            A window builder if the module has openings, otherwise a wall builder, ends are only
+            closed if the module is one section.
+        """
+        close_ends: bool = self._close_ends and sections == 1
+        if isinstance(module, ArcWindowModule):
+            return WindowBuilder(
+                WindowModule(
+                    width=module.width / sections,
+                    height=module.height,
+                    depth=module.depth,
+                    opening_width=module.opening_width,
+                    opening_height=module.opening_height,
+                    sill_height=module.sill_height,
+                ),
+                self._close_top,
+                self._close_bottom,
+                close_ends,
+            )
+        return WallBuilder(
+            WallModule(width=module.width, height=module.height, depth=module.depth),
+            self._close_top,
+            self._close_bottom,
+            close_ends,
+        )
 
     @staticmethod
     def _bend(bm: bmesh.types.BMesh, half_width: float, bulge: float) -> None:

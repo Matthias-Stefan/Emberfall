@@ -307,7 +307,7 @@ class BayPlacer:
         """
         for module in self._atlas.modules_of(FloorModule):
             if (
-                isinstance(module, FloorModule)
+                type(module) is FloorModule
                 and abs(module.width - 1.0) <= TOLERANCE
                 and abs(module.depth - bay_depth) <= TOLERANCE
             ):

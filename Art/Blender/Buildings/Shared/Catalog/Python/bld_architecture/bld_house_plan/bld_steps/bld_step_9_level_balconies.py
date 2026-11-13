@@ -12,6 +12,7 @@ from bld_modules import (
     TOLERANCE,
     ArcWallModule,
     BayWallModule,
+    DiagonalWallModule,
     DoorModule,
     PillarModule,
     RailModule,
@@ -133,7 +134,7 @@ class LevelBalconyPlacer:
 
         new_rings: list[list[ModulePlacement]] = [list(ring.placements) for ring in rings]
         wall_rectangles: list[tuple[int, int, Rectangle]] = [
-            (ring_index, index, self._rectangle_of_wall(placement))
+            (ring_index, index, self.rectangle_of_wall(placement))
             for ring_index, ring in enumerate(rings)
             for index, placement in enumerate(ring.placements)
         ]
@@ -362,7 +363,7 @@ class LevelBalconyPlacer:
         return back_cells == row
 
     @staticmethod
-    def _rectangle_of_wall(placement: ModulePlacement) -> Rectangle:
+    def rectangle_of_wall(placement: ModulePlacement) -> Rectangle:
         """Measures the area a placed wall, post or window covers on the plan.
 
         Args:
@@ -372,6 +373,15 @@ class LevelBalconyPlacer:
             The rectangle in m.
         """
         module = placement.module
+        if isinstance(module, DiagonalWallModule):
+            # the box around a wall that runs at 45 degrees
+            half: float = (module.width + module.depth) / (2.0 * math.sqrt(2.0))
+            return (
+                placement.position[0] - half,
+                placement.position[1] - half,
+                placement.position[0] + half,
+                placement.position[1] + half,
+            )
         if not isinstance(module, ArcWallModule):
             return StairPlacer.rectangle_of(placement, module.width, module.depth)
         normal: tuple[int, int] = _FRONT[placement.rotation_steps]

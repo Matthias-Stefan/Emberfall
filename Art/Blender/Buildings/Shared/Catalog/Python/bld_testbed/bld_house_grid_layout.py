@@ -18,10 +18,12 @@ from bld_module_builder import (
     ArcWallBuilder,
     BaseModuleBuilder,
     BracketBuilder,
+    DiagonalWallBuilder,
     DoorBuilder,
     FloorBuilder,
     PostBuilder,
     StairBuilder,
+    TriangleFloorBuilder,
     WallBuilder,
     WindowBuilder,
 )
@@ -30,10 +32,12 @@ from bld_modules import (
     ArcWallModule,
     BaseSlotModule,
     BracketModule,
+    DiagonalWallModule,
     DoorModule,
     FloorModule,
     PostModule,
     StairModule,
+    TriangleFloorModule,
     WindowModule,
 )
 
@@ -236,6 +240,10 @@ class HouseGridLayout:
 
     @staticmethod
     def _builder_for(module: BaseSlotModule) -> BaseModuleBuilder:
+        if isinstance(module, DiagonalWallModule):
+            return DiagonalWallBuilder(module)
+        if isinstance(module, TriangleFloorModule):
+            return TriangleFloorBuilder(module)
         if isinstance(module, BracketModule):
             return BracketBuilder(module)
         if isinstance(module, ArcWallModule):

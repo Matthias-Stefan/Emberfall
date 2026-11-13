@@ -10,8 +10,12 @@ from .bld_arc_floor_module import (
 from .bld_floor_module import (
     FloorModule
 )
+from .bld_triangle_floor_module import (
+    TriangleFloorModule,
+)
 
 __all__: list[str] = [
     "ArcFloorModule",
     "FloorModule",
+    "TriangleFloorModule",
 ]

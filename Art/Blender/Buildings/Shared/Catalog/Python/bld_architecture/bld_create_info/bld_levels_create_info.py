@@ -25,6 +25,18 @@ class LevelsCreateInfo:
     """Most bays per level, 0 builds none."""
     bay_chance: float = 0.6
     """Chance that a bay is placed on a free wall that fits one."""
+    round_end_chance: float = 0.4
+    """Chance that a building gets a round end, a free straight wall turned into a half circle."""
+    round_end_min_length: int = 2
+    """Shortest wall in m that may become a half circle."""
+    round_end_max_length: int = 6
+    """Longest wall in m that may become a half circle."""
+    chamfer_chance: float = 0.5
+    """Chance that an outer corner that fits is cut off at 45 degrees."""
+    max_chamfers: int = 2
+    """Most cut corners per building, 0 cuts none."""
+    max_chamfer_size: int = 2
+    """Longest leg in m of the triangle that is cut off a corner."""
     round_bay_chance: float = 0.5
     """Chance that a bay is round, a curved front instead of a front and two side walls."""
     bay_widths: tuple[float, ...] = (1.0, 2.0)
@@ -65,6 +77,14 @@ class LevelsCreateInfo:
             raise ValueError(f"max_bays must be >= 0, got {self.max_bays}")
         if not 0.0 <= self.bay_chance <= 1.0:
             raise ValueError(f"bay_chance must be in 0..1, got {self.bay_chance}")
+        if not 0.0 <= self.round_end_chance <= 1.0:
+            raise ValueError(f"round_end_chance must be in 0..1, got {self.round_end_chance}")
+        if not 1 <= self.round_end_min_length <= self.round_end_max_length:
+            raise ValueError("round end lengths must satisfy 1 <= min <= max")
+        if not 0.0 <= self.chamfer_chance <= 1.0:
+            raise ValueError(f"chamfer_chance must be in 0..1, got {self.chamfer_chance}")
+        if self.max_chamfers < 0 or self.max_chamfer_size < 1:
+            raise ValueError("max_chamfers must be >= 0 and max_chamfer_size >= 1")
         if not 0.0 <= self.round_bay_chance <= 1.0:
             raise ValueError(f"round_bay_chance must be in 0..1, got {self.round_bay_chance}")
         if not 0.0 <= self.balcony_chance <= 1.0:

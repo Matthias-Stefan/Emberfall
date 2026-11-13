@@ -5,6 +5,7 @@ __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 import random
+from dataclasses import replace
 
 from bld_modules import DoorModule
 
@@ -17,6 +18,8 @@ from .bld_house_plan import (
     FoundationPlan,
     FoundationPlanner,
     HousePlan,
+    ApsisPlacer,
+    ChamferPlacer,
     BayPlacer,
     BracketPlacer,
     LevelBalconyPlacer,
@@ -54,12 +57,16 @@ class Architect:
         self._stair_placer: StairPlacer = StairPlacer(style.atlas)
         self._balcony_planner: BalconyPlanner = BalconyPlanner(style.atlas)
         self._floor_planner: FloorPlanner = FloorPlanner(style.atlas)
+        self._apsis_placer: ApsisPlacer = ApsisPlacer(style.atlas)
+        self._chamfer_placer: ChamferPlacer = ChamferPlacer(style.atlas)
         self._level_planner: LevelPlanner = LevelPlanner(
             self._outline_reader,
             self._wall_filler,
             self._opening_placer,
             self._floor_planner,
             LevelFootprintDesigner(),
+            self._apsis_placer,
+            self._chamfer_placer,
             BayPlacer(style.atlas),
             BracketPlacer(style.atlas),
             LevelBalconyPlacer(style.atlas, self._floor_planner),
@@ -123,12 +130,35 @@ class Architect:
         balcony_rings, balconies = self._balcony_planner.plan(
             stair_rings, outlines, footprint, foundation, create_info.balconies, balcony_random
         )
+
+        # own random stream again, the round end only turns a free wall, so it comes last
+        round_rings, round_base = self._apsis_placer.place_ground(
+            balcony_rings,
+            outlines,
+            footprint,
+            foundation,
+            LevelPlanner.ground_obstacles(balcony_rings, balconies),
+            create_info.levels,
+            random.Random(f"{create_info.seed}:apsis"),
+        )
+
+        # cut corners come after the round end, they keep away from the walls it replaced
+        cut_rings, cuts = self._chamfer_placer.place_ground(
+            round_rings,
+            outlines,
+            footprint,
+            create_info.levels,
+            random.Random(f"{create_info.seed}:chamfers"),
+        )
+        balcony_rings = cut_rings
+        if foundation is not None:
+            foundation = replace(foundation, cuts=cuts)
         return HousePlan(
             footprint=footprint,
             rings=balcony_rings,
             balconies=balconies,
             foundation=foundation,
-            floor=self._floor_planner.plan(footprint, foundation),
+            floor=(*self._chamfer_placer.cut_floor(self._floor_planner.plan(footprint, foundation), cuts), *round_base),
             levels=self._level_planner.plan(
                 create_info,
                 balcony_rings,

@@ -6,7 +6,7 @@ __version__ = "0.1.0"
 
 from enum import Enum
 
-from bld_modules import ArcWindowModule, BaseSlotModule, DoorModule, FloorModule, StairModule, WindowModule
+from bld_modules import ArcWindowModule, DiagonalWindowModule, BaseSlotModule, DoorModule, FloorModule, StairModule, WindowModule
 
 
 class HousePart(Enum):
@@ -35,7 +35,7 @@ class HousePart(Enum):
         Returns:
             The part, posts and plain walls count as walls.
         """
-        if isinstance(module, (DoorModule, WindowModule, ArcWindowModule)):
+        if isinstance(module, (DoorModule, WindowModule, ArcWindowModule, DiagonalWindowModule)):
             return HousePart.OPENINGS
         if isinstance(module, StairModule):
             return HousePart.STAIRS

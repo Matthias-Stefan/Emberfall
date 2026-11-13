@@ -17,6 +17,8 @@ from .bld_wall_modules import (
     ArcWindowModule,
     BayWallModule,
     BracketModule,
+    DiagonalWallModule,
+    DiagonalWindowModule,
     DoorModule,
     OpeningWallModule,
     PillarModule,
@@ -28,6 +30,7 @@ from .bld_wall_modules import (
 from .bld_floor_modules import (
     ArcFloorModule,
     FloorModule,
+    TriangleFloorModule,
 )
 from .bld_rail_modules import (
     RailModule,
@@ -44,6 +47,8 @@ __all__: list[str] = [
     "BracketModule",
     "BaseModule",
     "BaseSlotModule",
+    "DiagonalWallModule",
+    "DiagonalWindowModule",
     "DoorModule",
     "FloorModule",
     "OpeningWallModule",
@@ -51,6 +56,7 @@ __all__: list[str] = [
     "PostModule",
     "RailModule",
     "StairModule",
+    "TriangleFloorModule",
     "WallModule",
     "WindowModule",
 

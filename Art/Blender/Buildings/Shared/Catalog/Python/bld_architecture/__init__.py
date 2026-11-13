@@ -17,14 +17,17 @@ from .bld_create_info import (
     OpeningCreateInfo,
 )
 from .bld_house_plan import (
+    ApsisPlacer,
     BalconyPlan,
     BalconyPlanner,
     BayPlacer,
+    ChamferPlacer,
     BracketPlacer,
     CellRectangle,
     Footprint,
     FloorPlanner,
     FootprintDesigner,
+    CornerCut,
     FoundationPlan,
     FoundationPlanner,
     HousePlan,
@@ -51,9 +54,11 @@ from .bld_style import (
 
 __all__: list[str] = [
     "BalconyCreateInfo",
+    "ApsisPlacer",
     "BalconyPlan",
     "BalconyPlanner",
     "BayPlacer",
+    "ChamferPlacer",
     "BracketPlacer",
     "Architect",
     "BuildingCreateInfo",
@@ -64,6 +69,7 @@ __all__: list[str] = [
     "FoundationCreateInfo",
     "FloorPlanner",
     "FootprintDesigner",
+    "CornerCut",
     "FoundationPlan",
     "FoundationPlanner",
     "HousePlan",

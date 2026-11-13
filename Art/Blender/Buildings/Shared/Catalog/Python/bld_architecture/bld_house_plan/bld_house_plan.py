@@ -34,6 +34,18 @@ class ModuleRing:
 
 
 @dataclass(frozen=True)
+class CornerCut:
+    """Outer corner of an outline that is cut off at 45 degrees."""
+
+    point: tuple[float, float]
+    """Grid point of the corner in m, as the outline reads it."""
+    size: int
+    """Length in m of the two legs of the cut triangle, the diagonal is size times the root of two long."""
+    rotation: int
+    """Quarter turns of the corner, 0 is a south-east corner, the cut faces the way a module front of that rotation does."""
+
+
+@dataclass(frozen=True)
 class FoundationPlan:
     """Stone band under the outline rings that lifts the house off the ground."""
 
@@ -45,6 +57,8 @@ class FoundationPlan:
     """How far the band sticks out past the wall faces in m."""
     wall_depth: float
     """Wall thickness in m, the band is centered on the wall midline."""
+    cuts: tuple[CornerCut, ...] = ()
+    """Corners of the rings that are cut off, the band takes the diagonal."""
 
 
 @dataclass(frozen=True)
