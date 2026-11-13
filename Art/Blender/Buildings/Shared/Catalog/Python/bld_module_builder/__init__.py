@@ -10,6 +10,9 @@ from .bld_arc_floor_builder import (
 from .bld_arc_wall_builder import (
     ArcWallBuilder
 )
+from .bld_bracket_builder import (
+    BracketBuilder
+)
 from .bld_base_module_builder import (
     BaseModuleBuilder
 )
@@ -38,6 +41,7 @@ from .bld_window_builder import (
 __all__: list[str] = [
     "ArcFloorBuilder",
     "ArcWallBuilder",
+    "BracketBuilder",
     "BaseModuleBuilder",
     "DoorBuilder",
     "FloorBuilder",

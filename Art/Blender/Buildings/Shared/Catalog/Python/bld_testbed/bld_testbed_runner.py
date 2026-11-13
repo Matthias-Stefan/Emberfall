@@ -11,6 +11,7 @@ from bld_blender import MeshWriter
 from bld_module_builder import (
     ArcFloorBuilder,
     ArcWallBuilder,
+    BracketBuilder,
     DoorBuilder,
     FloorBuilder,
     PostBuilder,
@@ -27,6 +28,8 @@ from bld_presets import (
     arc_window_100x30x260_b50,
     arc_window_200x30x260_b50,
     bay_wall_50x30x260,
+    bracket_40x14x50,
+    bracket_50x14x50,
     door_200x30x260,
     door_400x30x260,
     floor_50x50x30,
@@ -117,6 +120,8 @@ class TestbedRunner:
             (wall_600x30x260, WallBuilder(wall_600x30x260, **closed)),
             (arc_wall_100x30x260_b50, ArcWallBuilder(arc_wall_100x30x260_b50, **closed)),
             (arc_wall_200x30x260_b50, ArcWallBuilder(arc_wall_200x30x260_b50, **closed)),
+            (bracket_40x14x50, BracketBuilder(bracket_40x14x50)),
+            (bracket_50x14x50, BracketBuilder(bracket_50x14x50)),
         ]
         door_row: CatalogRow = [
             (door_200x30x260, DoorBuilder(door_200x30x260, **closed)),

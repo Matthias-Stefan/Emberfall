@@ -18,6 +18,7 @@ from .bld_step_5_openings import OpeningPlacer
 from .bld_step_6_stairs import Rectangle, StairPlacer
 from .bld_step_8_floor import FloorPlanner
 from .bld_step_9_bays import BayPlacer
+from .bld_step_9_brackets import BracketPlacer
 from .bld_step_9_level_balconies import LevelBalconyPlacer
 from .bld_step_9_level_footprints import LevelFootprintDesigner
 from .bld_step_9_level_stairs import LevelStairPlacer, StairCandidate
@@ -36,6 +37,7 @@ class LevelPlanner:
         floor_planner: FloorPlanner,
         footprint_designer: LevelFootprintDesigner,
         bay_placer: BayPlacer,
+        bracket_placer: BracketPlacer,
         balcony_placer: LevelBalconyPlacer,
         stair_placer: LevelStairPlacer,
     ) -> None:
@@ -48,6 +50,7 @@ class LevelPlanner:
             floor_planner: Lays the floor slabs of a level.
             footprint_designer: Cuts the footprints of the levels out of the footprint below.
             bay_placer: Swaps walls of the levels against bays.
+            bracket_placer: Puts braces under the bays.
             balcony_placer: Builds balconies on pillars in front of new doors.
             stair_placer: Finds the interior stairs up to a level.
 
@@ -60,6 +63,7 @@ class LevelPlanner:
         self._floor_planner: FloorPlanner = floor_planner
         self._footprint_designer: LevelFootprintDesigner = footprint_designer
         self._bay_placer: BayPlacer = bay_placer
+        self._bracket_placer: BracketPlacer = bracket_placer
         self._balcony_placer: LevelBalconyPlacer = balcony_placer
         self._stair_placer: LevelStairPlacer = stair_placer
         return None
@@ -142,6 +146,7 @@ class LevelPlanner:
                     )
                     rings.append(ring)
                     bay_floor.extend(strips)
+                    bay_floor.extend(self._bracket_placer.place(ring, lower_rings, slab_elevation))
                 if level_number == 1:
                     # the pillars of a higher balcony would have to pass the balcony of the level below
                     balcony_rings, balcony_extras, balcony_floor = self._balcony_placer.place(

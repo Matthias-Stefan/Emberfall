@@ -18,6 +18,7 @@ from .bld_house_plan import (
     FoundationPlanner,
     HousePlan,
     BayPlacer,
+    BracketPlacer,
     LevelBalconyPlacer,
     LevelFootprintDesigner,
     LevelPlanner,
@@ -60,6 +61,7 @@ class Architect:
             self._floor_planner,
             LevelFootprintDesigner(),
             BayPlacer(style.atlas),
+            BracketPlacer(style.atlas),
             LevelBalconyPlacer(style.atlas, self._floor_planner),
             LevelStairPlacer(style.atlas),
         )

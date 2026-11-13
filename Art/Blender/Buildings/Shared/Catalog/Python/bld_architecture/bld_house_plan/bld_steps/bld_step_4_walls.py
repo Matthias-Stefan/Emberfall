@@ -83,9 +83,13 @@ class WallFiller:
         corner_post: PostModule = posts[0]  # the atlas lists the widest first
         middle_post: PostModule = posts[-1]  # the narrowest, equal to the corner post if alone
 
+        # a ring that touches itself on a point (two cells that only meet diagonally) has two
+        # corners there, but only one post fits
+        corner_points: list[tuple[float, float]] = list(
+            dict.fromkeys((float(corner.point[0]), float(corner.point[1])) for corner in ring.corners)
+        )
         placements: list[ModulePlacement] = [
-            ModulePlacement(corner_post, (float(corner.point[0]), float(corner.point[1])), 0)
-            for corner in ring.corners
+            ModulePlacement(corner_post, point, 0) for point in corner_points
         ]
         for segment in ring.segments:
             placements.extend(self._fill_segment(segment, middle_post, random_source))

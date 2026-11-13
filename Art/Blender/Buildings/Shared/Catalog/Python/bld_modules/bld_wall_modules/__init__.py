@@ -13,6 +13,9 @@ from .bld_arc_window_module import (
 from .bld_bay_wall_module import (
     BayWallModule,
 )
+from .bld_bracket_module import (
+    BracketModule,
+)
 from .bld_opening_wall_module import (
     DoorModule,
     OpeningWallModule,
@@ -32,6 +35,7 @@ __all__: list[str] = [
     "ArcWallModule",
     "ArcWindowModule",
     "BayWallModule",
+    "BracketModule",
     "DoorModule",
     "OpeningWallModule",
     "WindowModule",

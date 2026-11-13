@@ -17,6 +17,7 @@ from bld_module_builder import (
     ArcFloorBuilder,
     ArcWallBuilder,
     BaseModuleBuilder,
+    BracketBuilder,
     DoorBuilder,
     FloorBuilder,
     PostBuilder,
@@ -28,6 +29,7 @@ from bld_modules import (
     ArcFloorModule,
     ArcWallModule,
     BaseSlotModule,
+    BracketModule,
     DoorModule,
     FloorModule,
     PostModule,
@@ -234,6 +236,8 @@ class HouseGridLayout:
 
     @staticmethod
     def _builder_for(module: BaseSlotModule) -> BaseModuleBuilder:
+        if isinstance(module, BracketModule):
+            return BracketBuilder(module)
         if isinstance(module, ArcWallModule):
             return ArcWallBuilder(module)
         if isinstance(module, ArcFloorModule):
