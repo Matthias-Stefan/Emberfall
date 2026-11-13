@@ -21,7 +21,7 @@ public class Emberfall : ModuleRules
 			"GameplayTasks"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "WaveTable" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "WaveTable", "Draco", "Draco" });
 
 		OptimizeCode = CodeOptimization.InShippingBuildsOnly;
 

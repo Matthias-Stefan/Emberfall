@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
+
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 
@@ -92,6 +93,47 @@ void FCoverSpatialGrid::Query(const FVector& Position, float Radius, TArray<ACov
     OutCoverObjects = UniqueObjects.Array();
 }
 
+void FCoverSpatialGrid::GetCandidatePairs(TArray<TPair<ACoverObject*, ACoverObject*>>& OutPairs) const
+{
+    OutPairs.Reset();
+    TSet<uint64> SeenPairKeys;
+
+    for (const TPair<FIntPoint, TArray<TWeakObjectPtr<ACoverObject>>>& CellEntry : Cells)
+    {
+        const TArray<TWeakObjectPtr<ACoverObject>>& Members = CellEntry.Value;
+        for (int32 FirstIndex = 0; FirstIndex < Members.Num(); ++FirstIndex)
+        {
+            ACoverObject* FirstObject = Members[FirstIndex].Get();
+            if (!FirstObject)
+            {
+                continue;
+            }
+
+            for (int32 SecondIndex = FirstIndex + 1; SecondIndex < Members.Num(); ++SecondIndex)
+            {
+                ACoverObject* SecondObject = Members[SecondIndex].Get();
+                if (!SecondObject)
+                {
+                    continue;
+                }
+
+                // Order-independent key, so the pair (A, B) and (B, A) collapse into one entry.
+                const uint32 FirstId = FirstObject->GetUniqueID();
+                const uint32 SecondId = SecondObject->GetUniqueID();
+                const uint64 PairKey = (static_cast<uint64>(FMath::Min(FirstId, SecondId)) << 32)
+                                     | FMath::Max(FirstId, SecondId);
+
+                bool bAlreadySeen = false;
+                SeenPairKeys.Add(PairKey, &bAlreadySeen);
+                if (!bAlreadySeen)
+                {
+                    OutPairs.Emplace(FirstObject, SecondObject);
+                }
+            }
+        }
+    }
+}
+
 void FCoverSpatialGrid::Empty()
 {
     Cells.Empty();
@@ -101,40 +143,6 @@ void FCoverSpatialGrid::Empty()
 float FCoverSpatialGrid::GetCellSize() const
 {
     return FMath::Max(Settings.CellSize, 1.0f);
-}
-
-void FCoverSpatialGrid::GetCandidatePairs(TArray<TPair<ACoverObject*, ACoverObject*>>& OutPairs) const
-{
-    OutPairs.Reset();
-    TSet<uint64> SeenPairs;
-
-    for (const TPair<FIntPoint, TArray<TWeakObjectPtr<ACoverObject>>>& CellEntry : Cells)
-    {
-        const TArray<TWeakObjectPtr<ACoverObject>>& Members = CellEntry.Value;
-        for (int32 FirstIndex = 0; FirstIndex < Members.Num(); ++FirstIndex)
-        {
-            for (int32 SecondIndex = FirstIndex + 1; SecondIndex < Members.Num(); ++SecondIndex)
-            {
-                ACoverObject* ObjectA = Members[FirstIndex].Get();
-                ACoverObject* ObjectB = Members[SecondIndex].Get();
-                if (!ObjectA || !ObjectB)
-                {
-                    continue;
-                }
-
-                const uint32 IdA = ObjectA->GetUniqueID();
-                const uint32 IdB = ObjectB->GetUniqueID();
-                const uint64 PairKey = (static_cast<uint64>(FMath::Min(IdA, IdB)) << 32) | FMath::Max(IdA, IdB);
-
-                bool bAlreadySeen = false;
-                SeenPairs.Add(PairKey, &bAlreadySeen);
-                if (!bAlreadySeen)
-                {
-                    OutPairs.Emplace(ObjectA, ObjectB);
-                }
-            }
-        }
-    }
 }
 
 FIntPoint FCoverSpatialGrid::WorldToCell(const FVector& WorldPosition) const
@@ -155,18 +163,18 @@ bool FCoverSpatialGrid::ComputeOccupiedCells(const ACoverObject& CoverObject, TA
 
     const float MergeRadius = GetMergeRadius();
 
-    FVector2D Min(Corners[0].X, Corners[0].Y);
-    FVector2D Max = Min;
+    FVector2D MinCorner(Corners[0].X, Corners[0].Y);
+    FVector2D MaxCorner = MinCorner;
     for (const FVector& Corner : Corners)
     {
-        Min.X = FMath::Min(Min.X, Corner.X);
-        Min.Y = FMath::Min(Min.Y, Corner.Y);
-        Max.X = FMath::Max(Max.X, Corner.X);
-        Max.Y = FMath::Max(Max.Y, Corner.Y);
+        MinCorner.X = FMath::Min(MinCorner.X, Corner.X);
+        MinCorner.Y = FMath::Min(MinCorner.Y, Corner.Y);
+        MaxCorner.X = FMath::Max(MaxCorner.X, Corner.X);
+        MaxCorner.Y = FMath::Max(MaxCorner.Y, Corner.Y);
     }
 
-    const FIntPoint MinCell = WorldToCell(FVector(Min.X - MergeRadius, Min.Y - MergeRadius, 0.0f));
-    const FIntPoint MaxCell = WorldToCell(FVector(Max.X + MergeRadius, Max.Y + MergeRadius, 0.0f));
+    const FIntPoint MinCell = WorldToCell(FVector(MinCorner.X - MergeRadius, MinCorner.Y - MergeRadius, 0.0f));
+    const FIntPoint MaxCell = WorldToCell(FVector(MaxCorner.X + MergeRadius, MaxCorner.Y + MergeRadius, 0.0f));
 
     OutCells.Reset();
     for (int32 CellX = MinCell.X; CellX <= MaxCell.X; ++CellX)

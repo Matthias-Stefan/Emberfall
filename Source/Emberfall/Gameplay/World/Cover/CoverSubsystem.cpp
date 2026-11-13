@@ -1,12 +1,13 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
-
-#include "Emberfall/Gameplay/World/Cover/CoverObject.h"
+#include "Emberfall/Gameplay/World/Cover/CoverDebugDrawer.h"
+#include "Emberfall/Gameplay/World/Cover/CoverGrouper.h"
+#include "Emberfall/Gameplay/World/Cover/CoverLog.h"
+#include "Emberfall/Gameplay/World/Cover/CoverOutlineBuilder.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
-#include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
+#include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
-#include "DrawDebugHelpers.h"
 #include "EngineUtils.h"
 
 
@@ -21,8 +22,19 @@ void UCoverSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UCoverSubsystem::Deinitialize()
 {
+    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
+    {
+        if (CoverObject)
+        {
+            CoverObject->RemoveChangedListeners(this);
+        }
+    }
+    
+    Groups.Empty();
     SpatialGrid.Reset();
     CoverObjects.Empty();
+    bGroupsDirty = false;
+
     Super::Deinitialize();
 }
 
@@ -37,11 +49,12 @@ void UCoverSubsystem::OnWorldBeginPlay(UWorld& InWorld)
         RegisterCoverObject(CoverObject);
     }
 
+    RebuildGroups();
+
 #if ENABLE_DRAW_DEBUG
     if (GetDefault<UCoverSettings>()->bDrawDebugGrid)
     {
-        DrawDebugCells(-1.0f);
-        DrawDebugFootprints(-1.0f);
+        DrawDebug(-1.0f);
     }
 #endif
 }
@@ -60,17 +73,39 @@ bool UCoverSubsystem::RegisterCoverObject(ACoverObject* CoverObject)
         return false;
     }
 
-    SpatialGrid->Insert(CoverObject);
+    if (!SpatialGrid->Insert(CoverObject))
+    {
+        CoverObjects.Remove(CoverObject);
+        UE_LOG(LogCover, Warning, TEXT("UCoverSubsystem: '%s' has no footprint, not registered"), *CoverObject->GetName());
+        return false;
+    }
+    CoverObject->AddChangedListener(this, &UCoverSubsystem::HandleCoverObjectChanged);
+    
+    MarkGroupsDirty();
     return true;
 }
 
 bool UCoverSubsystem::UnregisterCoverObject(ACoverObject* CoverObject)
 {
+    if (!CoverObject)
+    {
+        return false;
+    }
+
     if (SpatialGrid)
     {
         SpatialGrid->Remove(CoverObject);
     }
-    return CoverObjects.Remove(CoverObject) > 0;
+
+    const bool bRemoved = CoverObjects.Remove(CoverObject) > 0;
+    if (bRemoved)
+    {
+        CoverObject->RemoveChangedListeners(this);
+        MarkGroupsDirty();
+        UE_LOG(LogCover, Verbose, TEXT("UCoverSubsystem: unregistered '%s'"), *GetNameSafe(CoverObject));
+    }
+
+    return bRemoved;
 }
 
 void UCoverSubsystem::GetNearbyCoverObjects(const FVector& Position, float Radius,
@@ -82,74 +117,103 @@ void UCoverSubsystem::GetNearbyCoverObjects(const FVector& Position, float Radiu
     }
 }
 
+void UCoverSubsystem::RebuildGroups()
+{
+    // Cleared first, so reading the groups while rebuilding (debug drawing) does not trigger another rebuild.
+    bGroupsDirty = false;
+    
+    Groups.Reset();
+    if (!SpatialGrid)
+    {
+        return;
+    }
+
+    TArray<ACoverObject*> Objects;
+    Objects.Reserve(CoverObjects.Num());
+    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
+    {
+        if (IsValid(CoverObject))
+        {
+            Objects.Add(CoverObject);
+        }
+    }
+
+    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
+
+    const FCoverGrouper Grouper(*SpatialGrid, *Settings);
+    Grouper.Build(Objects, Groups);
+
+    const FCoverOutlineBuilder OutlineBuilder(*Settings);
+    for (FCoverGroup& Group : Groups)
+    {
+        TArray<FCoverLoop> Loops;
+        OutlineBuilder.Build(Group, Loops);
+        Group.SetLoops(MoveTemp(Loops));
+    }
+    
 #if ENABLE_DRAW_DEBUG
-void UCoverSubsystem::DrawDebugCells(float Duration) const
+    if (GetDefault<UCoverSettings>()->bDrawDebugGrid)
+    {
+        FlushPersistentDebugLines(GetWorld());
+        FlushDebugStrings(GetWorld());
+        DrawDebug(-1.0f);
+    }
+#endif
+}
+
+const TArray<FCoverGroup>& UCoverSubsystem::GetGroups()
+{
+    if (bGroupsDirty)
+    {
+        RebuildGroups();
+    }
+
+    return Groups;
+}
+
+void UCoverSubsystem::MarkGroupsDirty()
+{
+    if (bGroupsDirty)
+    {
+        return;
+    }
+
+    const UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
+
+    bGroupsDirty = true;
+
+    TWeakObjectPtr<UCoverSubsystem> WeakThis(this);
+    World->GetTimerManager().SetTimerForNextTick([WeakThis]()
+    {
+        if (UCoverSubsystem* Subsystem = WeakThis.Get())
+        {
+            Subsystem->GetGroups();
+        }
+    });
+}
+
+#if ENABLE_DRAW_DEBUG
+void UCoverSubsystem::DrawDebug(float Duration)
 {
     if (!SpatialGrid)
     {
         return;
     }
 
-    const float CellSize = SpatialGrid->GetCellSize();
-    const float GridHeight = GetDefault<UCoverSettings>()->DebugGridPlaneZ;
-    const FVector HalfExtent(CellSize * 0.5f, CellSize * 0.5f, 0.0f);
+    const FCoverDebugDrawer Drawer(*GetWorld(), *GetDefault<UCoverSettings>());
+    Drawer.DrawCells(*SpatialGrid, Duration);
+    
+    const TArray<FCoverGroup>& CurrentGroups = GetGroups();
+    Drawer.DrawGroups(CurrentGroups, Duration);
+    Drawer.DrawEnabledSides(CurrentGroups, Duration);
 
-    for (const TPair<FIntPoint, TArray<TWeakObjectPtr<ACoverObject>>>& CellEntry : SpatialGrid->GetCells())
+    for (const FCoverGroup& Group : CurrentGroups)
     {
-        FString Label = FString::Printf(TEXT("Cell (%d, %d): %d"),
-            CellEntry.Key.X, CellEntry.Key.Y, CellEntry.Value.Num());
-
-        for (const TWeakObjectPtr<ACoverObject>& WeakObject : CellEntry.Value)
-        {
-            if (const ACoverObject* CoverObject = WeakObject.Get())
-            {
-                Label += FString::Printf(TEXT("\n%s"), *CoverObject->GetActorNameOrLabel());
-            }
-        }
-
-        const FVector CellCenter(
-            (CellEntry.Key.X + 0.5f) * CellSize,
-            (CellEntry.Key.Y + 0.5f) * CellSize,
-            GridHeight);
-
-        DrawDebugBox(GetWorld(), CellCenter, HalfExtent, FColor::Yellow, Duration < 0.0f, Duration);
-        DrawDebugString(GetWorld(), CellCenter + FVector(0.0f, 0.0f, 50.0f), Label,
-            nullptr, FColor::Yellow, Duration, true, 1.2f);
-    }
-}
-
-void UCoverSubsystem::DrawDebugFootprints(float Duration) const
-{
-    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
-
-    for (const TObjectPtr<ACoverObject>& CoverObject : CoverObjects)
-    {
-        TArray<FVector> Corners;
-        if (!CoverObject || !CoverObject->GetFootprintCorners(Corners))
-        {
-            continue;
-        }
-
-        FVector Center = FVector::ZeroVector;
-        for (const FVector& Corner : Corners)
-        {
-            Center += Corner;
-        }
-        Center /= Corners.Num();
-
-        for (FVector& Corner : Corners)
-        {
-            const FVector OutwardDirection = (Corner - Center).GetSafeNormal2D();
-            Corner += OutwardDirection * Settings->DebugFootprintOffsetXY;
-            Corner.Z += Settings->DebugFootprintOffsetZ;
-        }
-
-        for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
-        {
-            const FVector& Start = Corners[CornerIndex];
-            const FVector& End = Corners[(CornerIndex + 1) % Corners.Num()];
-            DrawDebugLine(GetWorld(), Start, End, FColor::Blue, Duration < 0.0f, Duration, 0, 4.0f);
-        }
+        Drawer.DrawLoops(Group.GetLoops(), Duration);
     }
 }
 #endif
@@ -160,4 +224,24 @@ void UCoverSubsystem::CollectCoverObjects(TArray<ACoverObject*>& OutCoverObjects
     {
         OutCoverObjects.Add(*It);
     }
+}
+
+void UCoverSubsystem::HandleCoverObjectChanged(ACoverObject* CoverObject)
+{
+    if (!SpatialGrid || !CoverObject || !CoverObjects.Contains(CoverObject))
+    {
+        return;
+    }
+
+    // The grid keeps the cells of the position at registration, so the object has to leave and re-enter.
+    SpatialGrid->Remove(CoverObject);
+    if (!SpatialGrid->Insert(CoverObject))
+    {
+        // Without a footprint the object cannot stay in the grid, keep registry and grid consistent.
+        UE_LOG(LogCover, Warning, TEXT("UCoverSubsystem: '%s' lost its footprint, unregistered"), *GetNameSafe(CoverObject));
+        UnregisterCoverObject(CoverObject);
+        return;
+    }
+
+    MarkGroupsDirty();
 }
