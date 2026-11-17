@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 7: rings with stairs -> balconies that replace the stairs in front of some doors."""
+"""Rings with stairs -> balconies that replace the stairs in front of some doors."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -9,12 +9,19 @@ import random
 
 from bld_modules import TOLERANCE, DoorModule, StairModule
 
-from ...bld_create_info import BalconyCreateInfo
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import BalconyPlan, FoundationPlan, ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Footprint, Side
-from .bld_step_2_outline import OutlineRing, OutlineSegment
-from .bld_step_6_stairs import Rectangle, StairPlacer
+from ..bld_create_info import BalconyCreateInfo
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import (
+    BalconyPlan,
+    Footprint,
+    FoundationPlan,
+    ModulePlacement,
+    ModuleRing,
+    OutlineRing,
+    OutlineSegment,
+    Side,
+)
+from .bld_stair_placer import Rectangle, StairPlacer
 
 Cell = tuple[int, int]
 
@@ -55,7 +62,7 @@ class BalconyPlanner:
             footprint is the footprint, balconies never cover its cells.
             foundation is the foundation the balconies stand at, None means no balconies.
             create_info is the rules for the balconies.
-            random_source is the random stream for the balconies, separate from all other steps.
+            random_source is the random stream for the balconies, separate from all other passes.
 
         Returns:
             The rings without the stairs of balcony doors, and the balconies in door order.

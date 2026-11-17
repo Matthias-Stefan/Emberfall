@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 4: outline rings -> posts on the corners and walls on the segments."""
+"""Outline rings -> posts on the corners and walls on the segments."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -8,11 +8,9 @@ import random
 
 from bld_modules import TOLERANCE, BayWallModule, DiagonalWallModule, PillarModule, PostModule, WallModule
 
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Side
-from .bld_step_2_outline import OutlineRing, OutlineSegment
-from .bld_step_4_wall_patterns import (
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import ModulePlacement, ModuleRing, OutlineRing, OutlineSegment, Side
+from .bld_wall_patterns import (
     WallPattern,
     WallPatternPicker,
     is_symmetric,

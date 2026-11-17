@@ -1,14 +1,13 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 8: footprint and foundation -> floor slabs on every cell of the ground floor."""
+"""Footprint and foundation -> floor slabs on every cell of the ground floor."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 from bld_modules import TOLERANCE, FloorModule
 
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import FoundationPlan, ModulePlacement
-from .bld_step_1_footprint import Footprint
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import Footprint, FoundationPlan, ModulePlacement
 
 CELL_SIZE: float = 1.0
 """Edge length of one grid cell in m, the floor slab of a whole cell has this size."""

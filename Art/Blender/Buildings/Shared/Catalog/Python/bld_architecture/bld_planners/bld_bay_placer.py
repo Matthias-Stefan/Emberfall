@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: ring of a level -> ring with bays, walls swapped against a box that sticks out."""
+"""Ring of a level -> ring with bays, walls swapped against a box that sticks out."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -20,10 +20,9 @@ from bld_modules import (
     WindowModule,
 )
 
-from ...bld_create_info import LevelsCreateInfo
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import ModulePlacement, ModuleRing
-from .bld_step_2_outline import OutlineRing
+from ..bld_create_info import LevelsCreateInfo
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import ModulePlacement, ModuleRing, OutlineRing
 
 # front direction (-Y turned by n quarter turns) per rotation, the width axis is the next one
 _FRONT: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -59,7 +58,7 @@ class BayPlacer:
             outline is the outline the ring was filled from, the bays keep away from its corners.
             slab_elevation is the height of the bottom of the floor slabs of the level in m.
             levels_info is the rules for the bays.
-            random_source is the random stream for the choices, separate from all other steps.
+            random_source is the random stream for the choices, separate from all other passes.
 
         Returns:
             The ring with the bays and the floor strips under them. Both unchanged and empty if
@@ -109,6 +108,9 @@ class BayPlacer:
             round_bay: tuple[list[ModulePlacement], list[ModulePlacement]] | None = None
             if random_source.random() < levels_info.round_bay_chance:
                 round_bay = self._build_round(ring.placements[index], slab_elevation, random_source)
+                if round_bay is not None:
+                    # the filler only posts joints 2 m from the next post, so the arc can stand free at its ends
+                    round_bay[0].extend(self._missing_end_posts(ring.placements[index], posts[-1], placements))
             if round_bay is None:
                 round_bay = self._build(
                     ring.placements[index], bay_wall, strip, posts[0], slab_elevation, random_source
@@ -242,7 +244,7 @@ class BayPlacer:
         """Builds the round bay that replaces one wall.
 
         The curved front takes the place of the wall and bulges out of the wall line, so it
-        needs no side walls and no posts, the posts at the ends of the wall stay.
+        needs no side walls, the posts at the ends of the wall are added by the caller if missing.
 
         Args:
             wall is the wall or window that is replaced.
@@ -284,6 +286,38 @@ class BayPlacer:
             slab_elevation,
         )
         return [replace(wall, module=front_module)], [floor_placement]
+
+    def _missing_end_posts(
+        self,
+        wall: ModulePlacement,
+        post: PostModule,
+        placed: list[ModulePlacement],
+    ) -> list[ModulePlacement]:
+        """Builds posts on the two ends of a wall that have none yet.
+
+        Args:
+            wall is the wall or window that is replaced by a round bay.
+            post is the post to place, the narrow post of the walls.
+            placed are the placements of the ring so far, posts among them are not doubled.
+
+        Returns:
+            One post per end of the wall that has no post within the tolerance, empty if both have one.
+        """
+        tangent: tuple[int, int] = _FRONT[(wall.rotation_steps + 1) % 4]
+        half_width: float = wall.module.width * 0.5
+        missing: list[ModulePlacement] = []
+        for sign in (-1, 1):
+            end: tuple[float, float] = (
+                wall.position[0] + sign * tangent[0] * half_width,
+                wall.position[1] + sign * tangent[1] * half_width,
+            )
+            if any(
+                isinstance(other.module, PostModule) and self._distance(other.position, end) <= TOLERANCE
+                for other in placed
+            ):
+                continue
+            missing.append(replace(wall, module=post, position=end, rotation_steps=0))
+        return missing
 
     def _find_bay_wall(self) -> BayWallModule | None:
         """Finds the short wall for the sides of a bay.

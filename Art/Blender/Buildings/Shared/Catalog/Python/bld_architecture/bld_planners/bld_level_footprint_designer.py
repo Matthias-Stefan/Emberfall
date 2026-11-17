@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: footprint of the level below -> footprints for the level above, always cut from it."""
+"""Footprint of the level below -> footprints for the level above, always cut from it."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -7,8 +7,8 @@ __version__ = "0.1.0"
 import random
 from collections import deque
 
-from ...bld_create_info import LevelsCreateInfo
-from .bld_step_1_footprint import Footprint
+from ..bld_create_info import LevelsCreateInfo
+from ..bld_house_plan import Footprint
 
 Cell = tuple[int, int]
 
@@ -31,7 +31,7 @@ class LevelFootprintDesigner:
         Args:
             levels_info is the rules for the levels, the area ratios limit the options.
             lower_footprint is the footprint of the level below.
-            random_source is the random stream of the level, separate from all other steps.
+            random_source is the random stream of the level, separate from all other passes.
 
         Returns:
             The footprints in random order, the footprint below itself included if the area

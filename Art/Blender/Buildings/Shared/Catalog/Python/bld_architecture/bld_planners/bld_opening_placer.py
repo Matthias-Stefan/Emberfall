@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 5: rings with posts and walls -> rings with doors and windows swapped in for walls."""
+"""Rings with posts and walls -> rings with doors and windows swapped in for walls."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -10,8 +10,8 @@ from dataclasses import replace
 
 from bld_modules import TOLERANCE, DoorModule, OpeningWallModule, WallModule, WindowModule
 
-from ...bld_create_info import OpeningCreateInfo
-from ...bld_style import ModuleAtlas
+from ..bld_create_info import OpeningCreateInfo
+from ..bld_style import ModuleAtlas
 from ..bld_house_plan import ModulePlacement, ModuleRing
 
 

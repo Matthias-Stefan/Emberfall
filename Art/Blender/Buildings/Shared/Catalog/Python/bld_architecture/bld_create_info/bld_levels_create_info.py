@@ -31,8 +31,8 @@ class LevelsCreateInfo:
     """Shortest wall in m that may become a half circle."""
     round_end_max_length: int = 6
     """Longest wall in m that may become a half circle."""
-    chamfer_chance: float = 0.5
-    """Chance that an outer corner that fits is cut off at 45 degrees."""
+    chamfer_chance: float = 0.25
+    """Chance that a building gets cut corners at all, shared by all diagonal walls and windows."""
     max_chamfers: int = 2
     """Most cut corners per building, 0 cuts none."""
     max_chamfer_size: int = 2

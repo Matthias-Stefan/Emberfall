@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 from bld_modules import BaseModule
 
-from .bld_steps.bld_step_1_footprint import Footprint, Side
-from .bld_steps.bld_step_2_outline import OutlineRing
+from .bld_footprint import Footprint, Side
+from .bld_outline import OutlineRing
 
 
 @dataclass(frozen=True)

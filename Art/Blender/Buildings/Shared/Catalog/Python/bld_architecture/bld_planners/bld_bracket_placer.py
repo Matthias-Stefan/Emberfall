@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: ring with bays and the rings below -> braces under the bays."""
+"""Ring with bays and the rings below -> braces under the bays."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -15,9 +15,9 @@ from bld_modules import (
     WindowModule,
 )
 
-from ...bld_style import ModuleAtlas
+from ..bld_style import ModuleAtlas
 from ..bld_house_plan import ModulePlacement, ModuleRing
-from .bld_step_6_stairs import StairPlacer
+from .bld_stair_placer import StairPlacer
 
 Point = tuple[float, float]
 
@@ -85,10 +85,9 @@ class BracketPlacer:
             module = placement.module
             if isinstance(module, ArcWallModule):
                 tangent: tuple[int, int] = _FRONT[(placement.rotation_steps + 1) % 4]
-                offsets: list[tuple[float, float]] = [(0.0, module.bulge)]
-                if module.width >= 2.0 - TOLERANCE:
-                    offsets.extend([(-0.5, 0.4), (0.5, 0.4)])
-                for offset, reach in offsets:
+                # one brace in the middle and one halfway to each end of the chord
+                chord_offsets: tuple[float, ...] = (-module.width * 0.25, 0.0, module.width * 0.25)
+                for offset in chord_offsets:
                     anchors.append(
                         (
                             (
@@ -96,7 +95,7 @@ class BracketPlacer:
                                 placement.position[1] + tangent[1] * offset,
                             ),
                             placement.rotation_steps,
-                            reach,
+                            self._arc_reach(module, offset),
                         )
                     )
             elif isinstance(module, (WallModule, WindowModule)) and not isinstance(module, BayWallModule):
@@ -155,18 +154,34 @@ class BracketPlacer:
         return anchors if len(anchors) == 2 else []
 
     @staticmethod
-    def _bracket_of(brackets: list[BracketModule], reach: float) -> BracketModule | None:
-        """Picks the bracket that reaches out as far as a bay.
+    def _arc_reach(module: ArcWallModule, offset: float) -> float:
+        """Computes how far a round bay sticks out at one point of its chord.
 
         Args:
-            brackets are the brackets of the atlas.
+            module is the curved wall of the bay.
+            offset is the distance in m from the middle of the chord along the wall line.
+
+        Returns:
+            Distance in m from the wall line to the arc, @c 0 at the ends of the chord.
+        """
+        half_width: float = module.width * 0.5
+        radius: float = (half_width * half_width + module.bulge * module.bulge) / (2.0 * module.bulge)
+        return max(0.0, math.sqrt(max(0.0, radius * radius - offset * offset)) - (radius - module.bulge))
+
+    @staticmethod
+    def _bracket_of(brackets: list[BracketModule], reach: float) -> BracketModule | None:
+        """Picks the longest bracket that still fits under a bay.
+
+        Args:
+            brackets are the brackets of the atlas, widest first.
             reach is the distance in m the bay sticks out from the wall.
 
         Returns:
-            The bracket whose projection is within 2 cm of the reach, @c None if there is none.
+            The widest bracket at most 2 cm longer than the reach, @c None if there is none.
         """
+        # a shorter brace still carries the slab, a longer one would poke out in front of the bay
         for bracket in brackets:
-            if abs(bracket.width - reach) <= 0.02:
+            if bracket.width <= reach + 0.02:
                 return bracket
         return None
 

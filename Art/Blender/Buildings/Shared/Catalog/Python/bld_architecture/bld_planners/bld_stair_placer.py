@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 6: rings on a foundation -> rings with a stair in front of every door."""
+"""Rings on a foundation -> rings with a stair in front of every door."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -8,7 +8,7 @@ import random
 
 from bld_modules import TOLERANCE, DoorModule, PostModule, StairModule
 
-from ...bld_style import ModuleAtlas
+from ..bld_style import ModuleAtlas
 from ..bld_house_plan import FoundationPlan, ModulePlacement, ModuleRing
 
 Rectangle = tuple[float, float, float, float]
@@ -44,7 +44,7 @@ class StairPlacer:
         Args:
             rings: Rings with posts, walls and openings, lifted onto the foundation.
             foundation: Foundation the stairs climb, None means no stairs are needed.
-            random_source: Random stream for the stair variants, separate from all other steps.
+            random_source: Random stream for the stair variants, separate from all other passes.
 
         Returns:
             The rings with the stairs appended to the ring of their door, in walking order.

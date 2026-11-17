@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: cells and rings of a level -> the interior stairs that lead up from it."""
+"""Cells and rings of a level -> the interior stairs that lead up from it."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -9,10 +9,9 @@ from dataclasses import dataclass
 
 from bld_modules import TOLERANCE, DoorModule, StairModule
 
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Footprint
-from .bld_step_6_stairs import Rectangle, StairPlacer
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import Footprint, ModulePlacement, ModuleRing
+from .bld_stair_placer import Rectangle, StairPlacer
 
 Cell = tuple[int, int]
 
@@ -70,7 +69,7 @@ class LevelStairPlacer:
             blocked_cells are the cells the stair must not use, e.g. the hole of the level below.
             bottom_elevation is the height of the floor the stair starts on in m.
             rise is the height the stair climbs in m.
-            random_source is the random stream that picks the stair module, separate from all other steps.
+            random_source is the random stream that picks the stair module, separate from all other passes.
 
         Returns:
             One candidate per rotation and start cell, empty if no stair of that rise fits.

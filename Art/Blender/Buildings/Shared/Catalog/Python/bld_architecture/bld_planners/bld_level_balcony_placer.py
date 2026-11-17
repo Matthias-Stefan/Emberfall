@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: rings of a level -> rings with a new door, a railed platform in front of it and pillars below."""
+"""Rings of a level -> rings with a new door, a railed platform in front of it and pillars below."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -20,13 +20,11 @@ from bld_modules import (
     WindowModule,
 )
 
-from ...bld_create_info import LevelsCreateInfo
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Footprint
-from .bld_step_2_outline import OutlineRing
-from .bld_step_6_stairs import Rectangle, StairPlacer
-from .bld_step_8_floor import FloorPlanner
+from ..bld_create_info import LevelsCreateInfo
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import Footprint, ModulePlacement, ModuleRing, OutlineRing
+from .bld_stair_placer import Rectangle, StairPlacer
+from .bld_floor_planner import FloorPlanner
 
 Cell = tuple[int, int]
 Point = tuple[float, float]
@@ -92,7 +90,7 @@ class LevelBalconyPlacer:
             slab_elevation is the height of the bottom of the floor slabs in m, the pillars reach up to it.
             wall_elevation is the height of the top of the floor slabs in m, doors and rails stand on it.
             levels_info is the rules for the balconies.
-            random_source is the random stream for the choices, separate from all other steps.
+            random_source is the random stream for the choices, separate from all other passes.
 
         Returns:
             The rings with the new doors, a ring with the rails and pillars and the floor slabs of the platforms.

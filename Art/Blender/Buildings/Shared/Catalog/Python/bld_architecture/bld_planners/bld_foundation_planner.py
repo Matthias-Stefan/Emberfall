@@ -1,14 +1,13 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 5: rings with openings -> optional foundation under the outline, rings lifted onto it."""
+"""Outline rings -> optional foundation under the outline, lifts the modules onto it later."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
 from dataclasses import replace
 
-from ...bld_create_info import FoundationCreateInfo
-from ..bld_house_plan import FoundationPlan, ModuleRing
-from .bld_step_2_outline import OutlineRing
+from ..bld_create_info import FoundationCreateInfo
+from ..bld_house_plan import FoundationPlan, ModuleRing, OutlineRing
 
 
 class FoundationPlanner:

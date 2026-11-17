@@ -4,6 +4,16 @@
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
 
+from .bld_bracket_presets import (
+    bracket_40x14x50,
+    bracket_50x14x50,
+)
+from .bld_diagonal_presets import (
+    diagonal_wall_141x30x260,
+    diagonal_wall_283x30x260,
+    diagonal_window_141x30x260,
+    diagonal_window_283x30x260,
+)
 from .bld_door_presets import (
     door_200x30x260,
     door_400x30x260,
@@ -41,12 +51,6 @@ from .bld_wall_presets import (
     arc_wall_100x30x260_b50,
     arc_wall_200x30x260_b50,
     bay_wall_50x30x260,
-    diagonal_wall_141x30x260,
-    diagonal_wall_283x30x260,
-    diagonal_window_141x30x260,
-    diagonal_window_283x30x260,
-    bracket_40x14x50,
-    bracket_50x14x50,
     wall_100x30x260,
     wall_200x30x260,
     wall_400x30x260,

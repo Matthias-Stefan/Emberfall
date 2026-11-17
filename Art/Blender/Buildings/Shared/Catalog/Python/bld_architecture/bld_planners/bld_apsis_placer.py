@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: rings -> a straight wall turned into a half circle, the round end of a building."""
+"""Rings -> a straight wall turned into a half circle, the round end of a building."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -19,12 +19,18 @@ from bld_modules import (
     WindowModule,
 )
 
-from ...bld_create_info import LevelsCreateInfo
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import FoundationPlan, ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Footprint
-from .bld_step_2_outline import CornerKind, OutlineRing, OutlineSegment
-from .bld_step_6_stairs import Rectangle, StairPlacer
+from ..bld_create_info import LevelsCreateInfo
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import (
+    CornerKind,
+    Footprint,
+    FoundationPlan,
+    ModulePlacement,
+    ModuleRing,
+    OutlineRing,
+    OutlineSegment,
+)
+from .bld_stair_placer import Rectangle, StairPlacer
 
 Point = tuple[float, float]
 Cell = tuple[int, int]
@@ -70,7 +76,7 @@ class ApsisPlacer:
             foundation is the foundation of the building, None if it stands on the ground.
             obstacles are the areas of stairs and balconies the half circle must keep clear of.
             levels_info is the rules for the round ends.
-            random_source is the random stream for the choices, separate from all other steps.
+            random_source is the random stream for the choices, separate from all other passes.
 
         Returns:
             The rings and the solid base under the half circle. Both unchanged and empty if the

@@ -115,7 +115,7 @@ class TestbedRunner:
         The catalog shows every module closed on all sides, so the flags are set here.
 
         Returns:
-            Wall row, door row, window row, post row, stair row, floor row and rail row.
+            Wall, door, window, post, stair, floor, rail, diagonal and bracket row.
         """
         closed: dict[str, bool] = {"close_top": True, "close_bottom": True, "close_ends": True}
 
@@ -127,10 +127,14 @@ class TestbedRunner:
             (wall_600x30x260, WallBuilder(wall_600x30x260, **closed)),
             (arc_wall_100x30x260_b50, ArcWallBuilder(arc_wall_100x30x260_b50, **closed)),
             (arc_wall_200x30x260_b50, ArcWallBuilder(arc_wall_200x30x260_b50, **closed)),
+        ]
+        diagonal_row: CatalogRow = [
             (diagonal_wall_141x30x260, DiagonalWallBuilder(diagonal_wall_141x30x260, **closed)),
             (diagonal_wall_283x30x260, DiagonalWallBuilder(diagonal_wall_283x30x260, **closed)),
             (diagonal_window_141x30x260, DiagonalWallBuilder(diagonal_window_141x30x260, **closed)),
             (diagonal_window_283x30x260, DiagonalWallBuilder(diagonal_window_283x30x260, **closed)),
+        ]
+        bracket_row: CatalogRow = [
             (bracket_40x14x50, BracketBuilder(bracket_40x14x50)),
             (bracket_50x14x50, BracketBuilder(bracket_50x14x50)),
         ]
@@ -174,7 +178,7 @@ class TestbedRunner:
             (rail_100x8x90, RailBuilder(rail_100x8x90)),
             (rail_200x8x90, RailBuilder(rail_200x8x90)),
         ]
-        return [wall_row, door_row, window_row, post_row, stair_row, floor_row, rail_row]
+        return [wall_row, door_row, window_row, post_row, stair_row, floor_row, rail_row, diagonal_row, bracket_row]
 
     def _print_catalog(self, catalog_rows: list[CatalogRow]) -> None:
         """Prints one line per module to the console.

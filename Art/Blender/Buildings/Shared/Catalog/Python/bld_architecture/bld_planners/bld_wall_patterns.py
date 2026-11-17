@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 3 helper: picks the wall widths of a segment from all splits, filtered by rules."""
+"""Picks the wall widths of a segment from all splits, filtered by rules."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"

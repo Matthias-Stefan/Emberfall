@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Emberfall. All Rights Reserved.
-"""Step 9 helper: rings -> outer corners cut off at 45 degrees, on the ground floor and the levels above."""
+"""Rings -> outer corners cut off at 45 degrees, on the ground floor and the levels above."""
 
 __author__ = "Matthias Stefan"
 __version__ = "0.1.0"
@@ -21,12 +21,18 @@ from bld_modules import (
     WindowModule,
 )
 
-from ...bld_create_info import LevelsCreateInfo
-from ...bld_style import ModuleAtlas
-from ..bld_house_plan import CornerCut, ModulePlacement, ModuleRing
-from .bld_step_1_footprint import Footprint
-from .bld_step_2_outline import CornerKind, OutlineRing, OutlineSegment
-from .bld_step_9_apsis import ApsisPlacer
+from ..bld_create_info import LevelsCreateInfo
+from ..bld_style import ModuleAtlas
+from ..bld_house_plan import (
+    CornerCut,
+    CornerKind,
+    Footprint,
+    ModulePlacement,
+    ModuleRing,
+    OutlineRing,
+    OutlineSegment,
+)
+from .bld_apsis_placer import ApsisPlacer
 
 Point = tuple[float, float]
 Cell = tuple[int, int]
@@ -68,7 +74,7 @@ class ChamferPlacer:
             outlines are the outline rings the rings were filled from, same order.
             footprint is the footprint of the ground floor.
             levels_info is the rules for the chamfers.
-            random_source is the random stream for the choices, separate from all other steps.
+            random_source is the random stream for the choices, separate from all other passes.
 
         Returns:
             The rings with the diagonal walls and the cuts. Both unchanged and empty if the chance
@@ -76,6 +82,10 @@ class ChamferPlacer:
         """
         if levels_info.chamfer_chance <= 0.0 or levels_info.max_chamfers == 0:
             return rings, ()
+        # one roll per building, a roll per corner made nearly every building cut a corner
+        if random_source.random() >= levels_info.chamfer_chance:
+            return rings, ()
+        chamfer_count: int = random_source.randint(1, levels_info.max_chamfers)
         cells: frozenset[Cell] = footprint.main_cells.union(*footprint.extension_cells)
         candidates: list[tuple[int, int]] = [
             (ring_index, corner_index)
@@ -88,10 +98,8 @@ class ChamferPlacer:
         new_rings: list[ModuleRing] = list(rings)
         cuts: list[CornerCut] = []
         for ring_index, corner_index in candidates:
-            if len(cuts) >= levels_info.max_chamfers:
+            if len(cuts) >= chamfer_count:
                 break
-            if random_source.random() >= levels_info.chamfer_chance:
-                continue
             sizes: list[int] = list(range(1, levels_info.max_chamfer_size + 1))
             random_source.shuffle(sizes)
             with_window: bool = random_source.random() < 0.5
