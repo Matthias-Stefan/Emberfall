@@ -39,6 +39,12 @@ public:
     virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 
     /**
+     * @brief Gives read access to the cover settings this subsystem was initialized with.
+     * @return The cover settings, valid between @c Initialize and @c Deinitialize.
+     */
+    const UCoverSettings& GetSettings() const;
+    
+    /**
      * @brief Adds a cover object to the registry and the spatial grid.
      * @param CoverObject is the cover object to register.
      * @return @c true if it was newly added, @c false if invalid or already registered.
@@ -58,7 +64,34 @@ public:
      * @param Radius is the half edge length of the query square in cm.
      * @param OutCoverObjects is filled with each found object once.
      */
-    void GetNearbyCoverObjects(const FVector& Position, float Radius, TArray<ACoverObject*>& OutCoverObjects) const;
+    void QueryCoverObjectsInGrid(const FVector& Position, float Radius,
+                                 TArray<ACoverObject*>& OutCoverObjects) const;
+
+    /**
+     * @brief Collects the cover objects whose footprint lies within a distance of a position.
+     * @param Position is the query point in world space.
+     * @param MaxDistance is the maximum distance from the position to the footprint in cm.
+     * @param OutCoverObjects is filled with each matching object once.
+     */
+    void QueryCoverObjectsInDistance(const FVector& Position, float MaxDistance,
+                                     TArray<ACoverObject*>& OutCoverObjects) const;
+
+    /**
+     * @brief Collects every enabled footprint edge within a distance of a position.
+     * @param Position is the query point in world space in cm.
+     * @param MaxDistance is the maximum distance from the position to the edge in cm.
+     * @param OutHits is filled with one entry per matching edge, unordered.
+     */
+    void QueryCoverEdgesInDistance(const FVector& Position, float MaxDistance, TArray<FCoverEdgeHit>& OutHits) const;
+
+    /**
+     * @brief Finds the closest enabled footprint edge within a distance of a position.
+     * @param Position is the query point in world space in cm.
+     * @param MaxDistance is the maximum distance from the position to the edge in cm.
+     * @param OutHit is filled with the closest edge.
+     * @return @c true if an enabled edge was found, otherwise @c false.
+     */
+    bool FindNearestCoverEdge(const FVector& Position, float MaxDistance, FCoverEdgeHit& OutHit) const;
 
     /**
      * @brief Rebuilds all groups from the registered cover objects.
@@ -96,17 +129,21 @@ private:
      * @param CoverObject is the object whose transform changed.
      */
     void HandleCoverObjectChanged(ACoverObject* CoverObject);
-    
+
     /** @brief All currently registered cover objects. */
     UPROPERTY()
     TSet<TObjectPtr<ACoverObject>> CoverObjects;
 
+    /** @brief Cover settings the subsystem works with, not owned, valid between @c Initialize and @c Deinitialize. */
+    UPROPERTY()
+    const UCoverSettings* Settings{ nullptr };
+    
     /** @brief Spatial index over all registered cover objects, valid between @c Initialize and @c Deinitialize. */
     TUniquePtr<FCoverSpatialGrid> SpatialGrid;
 
     /** @brief Groups derived from the registry by @c RebuildGroups, never the source of truth. */
     TArray<FCoverGroup> Groups;
-    
+
     /** @brief Whether the groups are outdated and must be rebuilt before the next read. */
-    bool bGroupsDirty{ false };
+    bool bGroupsDirty{false};
 };

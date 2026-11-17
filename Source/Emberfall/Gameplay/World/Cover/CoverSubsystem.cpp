@@ -1,6 +1,8 @@
 ﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
+
+#include "Emberfall/Gameplay/World/Cover/CoverGeometry.h"
 #include "Emberfall/Gameplay/World/Cover/CoverDebugDrawer.h"
 #include "Emberfall/Gameplay/World/Cover/CoverGrouper.h"
 #include "Emberfall/Gameplay/World/Cover/CoverLog.h"
@@ -15,7 +17,7 @@ void UCoverSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 
-    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
+    Settings = GetDefault<UCoverSettings>();
     checkf(Settings, TEXT("UCoverSettings class default object is missing"));
     SpatialGrid = MakeUnique<FCoverSpatialGrid>(*Settings);
 }
@@ -52,11 +54,17 @@ void UCoverSubsystem::OnWorldBeginPlay(UWorld& InWorld)
     RebuildGroups();
 
 #if ENABLE_DRAW_DEBUG
-    if (GetDefault<UCoverSettings>()->bDrawDebugGrid)
+    if (Settings->bDrawDebugGrid)
     {
         DrawDebug(-1.0f);
     }
 #endif
+}
+
+const UCoverSettings& UCoverSubsystem::GetSettings() const
+{
+    check(Settings);
+    return *Settings;
 }
 
 bool UCoverSubsystem::RegisterCoverObject(ACoverObject* CoverObject)
@@ -108,13 +116,113 @@ bool UCoverSubsystem::UnregisterCoverObject(ACoverObject* CoverObject)
     return bRemoved;
 }
 
-void UCoverSubsystem::GetNearbyCoverObjects(const FVector& Position, float Radius,
+void UCoverSubsystem::QueryCoverObjectsInGrid(const FVector& Position, float Radius,
     TArray<ACoverObject*>& OutCoverObjects) const
 {
     if (SpatialGrid)
     {
         SpatialGrid->Query(Position, Radius, OutCoverObjects);
     }
+}
+
+void UCoverSubsystem::QueryCoverObjectsInDistance(const FVector& Position, float MaxDistance,
+    TArray<ACoverObject*>& OutCoverObjects) const
+{
+    // The query square with half edge MaxDistance fully contains the query circle,
+    // so the grid never misses a matching object.
+    TArray<ACoverObject*> Candidates;
+    QueryCoverObjectsInGrid(Position, MaxDistance, Candidates);
+
+    const float MaxDistanceSquared = FMath::Square(MaxDistance);
+
+    // Reused for every candidate, so the array allocates only once.
+    TArray<FVector> FootprintCorners;
+    for (ACoverObject* Candidate : Candidates)
+    {
+        // An object without a mesh has no footprint and cannot be a cover.
+        if (!Candidate->GetFootprintCorners(FootprintCorners))
+        {
+            continue;
+        }
+
+        const float DistanceSquared = FCoverGeometry::DistanceSquaredToFootprint2D(Position, FootprintCorners);
+        if (DistanceSquared <= MaxDistanceSquared)
+        {
+            OutCoverObjects.Add(Candidate);
+        }
+    }
+}
+
+void UCoverSubsystem::QueryCoverEdgesInDistance(const FVector& Position, float MaxDistance,
+    TArray<FCoverEdgeHit>& OutHits) const
+{
+    TArray<ACoverObject*> Candidates;
+    QueryCoverObjectsInGrid(Position, MaxDistance, Candidates);
+
+    const FVector2D Point(Position.X, Position.Y);
+    TArray<FVector> Corners;
+    TArray<bool> EdgeEnabled;
+
+    for (ACoverObject* Candidate : Candidates)
+    {
+        if (!Candidate->GetFootprintEdges(Corners, EdgeEnabled))
+        {
+            continue;
+        }
+
+        FVector Center = FVector::ZeroVector;
+        for (const FVector& Corner : Corners)
+        {
+            Center += Corner;
+        }
+        Center /= Corners.Num();
+
+        for (int32 EdgeIndex = 0; EdgeIndex < Corners.Num(); ++EdgeIndex)
+        {
+            if (!EdgeEnabled[EdgeIndex])
+            {
+                continue;
+            }
+
+            const FVector& Start = Corners[EdgeIndex];
+            const FVector& End = Corners[(EdgeIndex + 1) % Corners.Num()];
+            const FVector2D ClosestPoint = FMath::ClosestPointOnSegment2D(
+                Point, FVector2D(Start.X, Start.Y), FVector2D(End.X, End.Y));
+
+            const double Distance = FVector2D::Distance(Point, ClosestPoint);
+            if (Distance > MaxDistance)
+            {
+                continue;
+            }
+
+            // Same outward normal as in GetFootprintEdges: from the center to the edge middle.
+            const FVector EdgeMiddle = (Start + End) * 0.5;
+
+            FCoverEdgeHit EdgeHit;
+            EdgeHit.CoverObject = Candidate;
+            EdgeHit.EdgeIndex = EdgeIndex;
+            EdgeHit.ClosestPoint = ClosestPoint;
+            EdgeHit.OutwardNormal = FVector2D(EdgeMiddle.X - Center.X, EdgeMiddle.Y - Center.Y).GetSafeNormal();
+            EdgeHit.Distance = Distance;
+            OutHits.Add(EdgeHit);
+        }
+    }
+}
+
+bool UCoverSubsystem::FindNearestCoverEdge(const FVector& Position, float MaxDistance,
+    FCoverEdgeHit& OutHit) const
+{
+    TArray<FCoverEdgeHit> EdgeHits;
+    QueryCoverEdgesInDistance(Position, MaxDistance, EdgeHits);
+
+    const FCoverEdgeHit* NearestHit = Algo::MinElementBy(EdgeHits, &FCoverEdgeHit::Distance);
+    if (!NearestHit)
+    {
+        return false;
+    }
+
+    OutHit = *NearestHit;
+    return true;
 }
 
 void UCoverSubsystem::RebuildGroups()
@@ -138,8 +246,6 @@ void UCoverSubsystem::RebuildGroups()
         }
     }
 
-    const UCoverSettings* Settings = GetDefault<UCoverSettings>();
-
     const FCoverGrouper Grouper(*SpatialGrid, *Settings);
     Grouper.Build(Objects, Groups);
 
@@ -152,7 +258,7 @@ void UCoverSubsystem::RebuildGroups()
     }
     
 #if ENABLE_DRAW_DEBUG
-    if (GetDefault<UCoverSettings>()->bDrawDebugGrid)
+    if (Settings->bDrawDebugGrid)
     {
         FlushPersistentDebugLines(GetWorld());
         FlushDebugStrings(GetWorld());
@@ -204,7 +310,7 @@ void UCoverSubsystem::DrawDebug(float Duration)
         return;
     }
 
-    const FCoverDebugDrawer Drawer(*GetWorld(), *GetDefault<UCoverSettings>());
+    const FCoverDebugDrawer Drawer(*GetWorld(), *Settings);
     Drawer.DrawCells(*SpatialGrid, Duration);
     
     const TArray<FCoverGroup>& CurrentGroups = GetGroups();

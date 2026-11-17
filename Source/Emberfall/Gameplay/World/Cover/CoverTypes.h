@@ -1,11 +1,11 @@
-﻿// CoverTypes.h
-// Copyright (c) 2026 Emberfall. All Rights Reserved.
+﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "CoverTypes.generated.h"
+
+class ACoverObject;
 
 
 /**
@@ -77,4 +77,25 @@ struct FCoverGrownFootprint
 
     /** @brief Direction of the wall's local positive Y axis in the ground plane, normalized, mirrors with negative scale. */
     FVector2D AxisY = FVector2D(0.0, 1.0);
+};
+
+/**
+ * @brief Describes an enabled footprint edge found by a distance query.
+ */
+struct FCoverEdgeHit
+{
+    /** @brief Cover object that owns the edge. */
+    ACoverObject* CoverObject = nullptr;
+
+    /** @brief Index of the edge in the footprint corner list, the edge runs from this corner to the next. */
+    int32 EdgeIndex = INDEX_NONE;
+
+    /** @brief Closest point on the edge in the ground plane in cm. */
+    FVector2D ClosestPoint = FVector2D::ZeroVector;
+
+    /** @brief Normalized ground-plane normal of the edge pointing out of the footprint. */
+    FVector2D OutwardNormal = FVector2D::ZeroVector;
+
+    /** @brief Distance from the query position to @c ClosestPoint in cm. */
+    double Distance = 0.0;
 };

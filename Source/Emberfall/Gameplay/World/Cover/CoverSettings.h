@@ -58,6 +58,21 @@ public:
     float OutlineMinChainLength = 50.0f;
     
     //~=============================================================================
+    // Entry
+
+    /** @brief Distance around a unit in which cover edges can be entered in cm. */
+    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0", Units = "cm"))
+    float EntrySearchRadius = 120.0f;
+
+    /** @brief Weight of the normalized distance in the cover edge score, higher prefers closer edges. */
+    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0"))
+    float EntryDistanceWeight = 1.0f;
+
+    /** @brief Weight of the normalized turn angle in the cover edge score, higher prefers edges that need less turning. */
+    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0"))
+    float EntryAngleWeight = 1.0f;
+    
+    //~=============================================================================
     // Debug
 
     /** @brief Whether the grid cells, groups, enabled sides and outline loops are drawn when the world begins play. */
