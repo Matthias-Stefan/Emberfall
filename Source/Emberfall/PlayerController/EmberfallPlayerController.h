@@ -28,18 +28,18 @@ public:
     /** @brief Returns the selection component; the HUD reads the drag state from it. */
     USelectionComponent* GetSelectionComponent() const { return SelectionComponent; }
 
+    /**
+     * @brief Updates hover, selection drag and edge scrolling each frame.
+     * @param DeltaSeconds Seconds since the last frame.
+     */
+    virtual void Tick(float DeltaSeconds) override;
+    
 protected:
     /** @brief Sets the input mode so game input and the visible cursor work together. */
     virtual void BeginPlay() override;
 
     /** @brief Binds @c SelectAction. */
     virtual void SetupInputComponent() override;
-
-    /**
-     * @brief Updates hover, selection drag and edge scrolling each frame.
-     * @param DeltaSeconds Seconds since the last frame.
-     */
-    virtual void Tick(float DeltaSeconds) override;
 
 private:
     //~=============================================================================
@@ -57,6 +57,12 @@ private:
     /** @brief Shift went up: selections replace the current one again. */
     void OnAddToSelectionCompleted(const FInputActionValue& Value);
 
+    /** @brief Enter cover key went down: sends the selected units into cover. */
+    void OnEnterCoverStarted(const FInputActionValue& Value);
+
+    /** @brief Leave cover key went down: takes the selected units out of cover. */
+    void OnLeaveCoverStarted(const FInputActionValue& Value);
+    
     //~=============================================================================
     // Commands
 
@@ -92,6 +98,14 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     TObjectPtr<UInputAction> CommandAction;
 
+    /** @brief C: sends the selected units into cover. */
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    TObjectPtr<UInputAction> EnterCoverAction;
+    
+    /** @brief V: takes the selected units out of cover. */
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    TObjectPtr<UInputAction> LeaveCoverAction;
+    
     //~=============================================================================
     // Camera
 

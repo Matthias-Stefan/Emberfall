@@ -3,10 +3,10 @@
 #include "Emberfall/PlayerController/EmberfallPlayerController.h"
 #include "Emberfall/Camera/CameraPawn.h"
 #include "Emberfall/Core/EmberfallLog.h"
+#include "Emberfall/Gameplay/Characters/Components/PlayerUnitCoverComponent.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
 #include "Emberfall/PlayerController/Selection/SelectionComponent.h"
 
-#include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
@@ -99,29 +99,32 @@ void AEmberfallPlayerController::SetupInputComponent()
     {
         UE_LOG(LogEmberfall, Error, TEXT("%s: CommandAction is not set."), *GetNameSafe(this));
     }
+
+    if (EnterCoverAction != nullptr)
+    {
+        EnhancedInput->BindAction(EnterCoverAction, ETriggerEvent::Started, this,
+                                  &AEmberfallPlayerController::OnEnterCoverStarted);
+    }
+    else
+    {
+        UE_LOG(LogEmberfall, Error, TEXT("%s: EnterCoverAction is not set."), *GetNameSafe(this));
+    }
+
+    if (LeaveCoverAction != nullptr)
+    {
+        EnhancedInput->BindAction(LeaveCoverAction, ETriggerEvent::Started, this,
+                                  &AEmberfallPlayerController::OnLeaveCoverStarted);
+    }
+    else
+    {
+        UE_LOG(LogEmberfall, Error, TEXT("%s: LeaveCoverAction is not set."), *GetNameSafe(this));
+    }
 }
 
 
 void AEmberfallPlayerController::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-
-    // TEMP: remove with IA_ToggleCover / IA_LeaveCover
-    {
-        if (WasInputKeyJustPressed(EKeys::C))
-        {
-            for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
-            {
-            }
-        }
-
-        if (WasInputKeyJustPressed(EKeys::V))
-        {
-            for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
-            {
-            }
-        }
-    }
 
     //
     // Hover
@@ -193,6 +196,28 @@ void AEmberfallPlayerController::OnAddToSelectionStarted([[maybe_unused]] const 
 void AEmberfallPlayerController::OnAddToSelectionCompleted([[maybe_unused]] const FInputActionValue& Value)
 {
     SelectionComponent->SetAddMode(false);
+}
+
+void AEmberfallPlayerController::OnEnterCoverStarted([[maybe_unused]] const FInputActionValue& Value)
+{
+    for (APlayerUnit* Unit : SelectionComponent->GetSelectedUnits())
+    {
+        if (IsValid(Unit))
+        {
+            Unit->GetCoverComponent()->TryEnterCover();
+        }
+    }
+}
+
+void AEmberfallPlayerController::OnLeaveCoverStarted([[maybe_unused]] const FInputActionValue& Value)
+{
+    for (APlayerUnit* Unit : SelectionComponent->GetSelectedUnits())
+    {
+        if (IsValid(Unit))
+        {
+            Unit->GetCoverComponent()->LeaveCover();
+        }
+    }
 }
 
 void AEmberfallPlayerController::OnCommandStarted([[maybe_unused]] const FInputActionValue& Value)

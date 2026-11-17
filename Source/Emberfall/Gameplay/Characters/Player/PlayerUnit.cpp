@@ -2,8 +2,9 @@
 
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
 #include "Emberfall/Core/EmberfallLog.h"
+#include "Emberfall/Gameplay/Characters/Components/PlayerUnitCoverComponent.h"
+#include "Emberfall/Gameplay/Characters/Components/PlayerUnitSelectionComponent.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnitAIController.h"
-#include "Emberfall/Gameplay/Characters/Player/PlayerUnitTypes.h"
 
 #include "Components/CapsuleComponent.h"
 
@@ -13,6 +14,9 @@ APlayerUnit::APlayerUnit()
     PrimaryActorTick.bCanEverTick = false;
 
     GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+    SelectionComponent = CreateDefaultSubobject<UPlayerUnitSelectionComponent>(TEXT("SelectionComponent"));
+    CoverComponent = CreateDefaultSubobject<UPlayerUnitCoverComponent>(TEXT("CoverComponent"));
 }
 
 void APlayerUnit::MoveToTarget(const FVector& Target)
@@ -25,40 +29,4 @@ void APlayerUnit::MoveToTarget(const FVector& Target)
     }
 
     AIController->MoveToLocation(Target, -1.f, true, true, true);
-}
-
-void APlayerUnit::SetHovered(bool bInHovered)
-{
-    if (bHovered == bInHovered)
-    {
-        return;
-    }
-
-    bHovered = bInHovered;
-    UpdateSelectionState();
-}
-
-void APlayerUnit::SetSelected(bool bInSelected)
-{
-    if (bSelected == bInSelected)
-    {
-        return;
-    }
-
-    bSelected = bInSelected;
-    UpdateSelectionState();
-}
-
-void APlayerUnit::UpdateSelectionState()
-{
-    const EPlayerUnitTypes NewSelectionState =
-        bSelected ? EPlayerUnitTypes::Selected : bHovered ? EPlayerUnitTypes::Hovered : EPlayerUnitTypes::None;
-
-    if (NewSelectionState == SelectionState)
-    {
-        return;
-    }
-
-    SelectionState = NewSelectionState;
-    OnSelectionStateChanged(SelectionState);
 }

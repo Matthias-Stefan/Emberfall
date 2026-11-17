@@ -2,19 +2,18 @@
 
 #pragma once
 
-#include "Emberfall/Gameplay/Characters/Player/PlayerUnitTypes.h"
-
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 
 #include "PlayerUnit.generated.h"
 
-class UCoverComponent;
+class UPlayerUnitCoverComponent;
+class UPlayerUnitSelectionComponent;
 
 
 /**
- * @brief Controllable character of the player. Shows hover and selection state through
- *        @c OnSelectionStateChanged; movement is driven by an AI controller.
+ * @brief Controllable character of the player; selection and cover state live in their own components,
+ *        movement is driven by an AI controller.
  */
 UCLASS()
 class EMBERFALL_API APlayerUnit : public ACharacter
@@ -29,48 +28,26 @@ public:
      * @param Target Requested world location.
      */
     void MoveToTarget(const FVector& Target);
-    
-    //~=============================================================================
-    // Selection
 
     /**
-     * @brief Sets the hover flag and refreshes the selection state.
-     * @param bInHovered @c true while the cursor is over the unit.
+     * @brief Returns the selection component that holds the hover and selection state.
+     * @return Selection component of this unit.
      */
-    void SetHovered(bool bInHovered);
+    UPlayerUnitSelectionComponent* GetSelectionComponent() const { return SelectionComponent; }
 
     /**
-     * @brief Sets the selected flag and refreshes the selection state.
-     * @param bInSelected @c true while the unit is part of the current selection.
+     * @brief Returns the cover component that holds the cover state.
+     * @return Cover component of this unit.
      */
-    void SetSelected(bool bInSelected);
-
-    /**
-     * @brief Returns the current selection state (@c Selected wins over @c Hovered).
-     * @return Current @c EPlayerUnitTypes selection state.
-     */
-    UFUNCTION(BlueprintPure, Category = "Selection")
-    EPlayerUnitTypes GetSelectionState() const { return SelectionState; }
-    
-protected:
-    /**
-     * @brief Fired when @c SelectionState changes. Implement the visual feedback in Blueprint.
-     * @param NewState The new @c EPlayerUnitTypes selection state.
-     */
-    UFUNCTION(BlueprintImplementableEvent, Category = "Selection")
-    void OnSelectionStateChanged(EPlayerUnitTypes NewState);
+    UFUNCTION(BlueprintPure, Category = "Cover")
+    UPlayerUnitCoverComponent* GetCoverComponent() const { return CoverComponent; }
 
 private:
-    /** @brief Derives @c SelectionState from @c bHovered / @c bSelected and fires @c OnSelectionStateChanged on change. */
-    void UpdateSelectionState();
+    /** @brief Hover and selection state of this unit. */
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UPlayerUnitSelectionComponent> SelectionComponent;
 
-private:
-    /** @brief Cursor is over the unit. */
-    bool bHovered = false;
-
-    /** @brief Unit is part of the current selection. */
-    bool bSelected = false;
-
-    /** @brief Derived from @c bHovered / @c bSelected, where @c Selected wins over @c Hovered. */
-    EPlayerUnitTypes SelectionState = EPlayerUnitTypes::None;
+    /** @brief Cover state and cover movement of this unit. */
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UPlayerUnitCoverComponent> CoverComponent;
 };

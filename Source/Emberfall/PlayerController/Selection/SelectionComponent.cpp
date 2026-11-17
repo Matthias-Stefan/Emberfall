@@ -2,6 +2,7 @@
 
 #include "Emberfall/PlayerController/Selection/SelectionComponent.h"
 #include "Emberfall/Core/EmberfallLog.h"
+#include "Emberfall/Gameplay/Characters/Components/PlayerUnitSelectionComponent.h"
 #include "Emberfall/Gameplay/Characters/Player/PlayerUnit.h"
 
 #include "EngineUtils.h"
@@ -9,205 +10,205 @@
 
 USelectionComponent::USelectionComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void USelectionComponent::UpdateHover()
 {
-	if (OwnerController == nullptr || DragState.IsDragging())
-	{
-		return;
-	}
+    if (OwnerController == nullptr || DragState.IsDragging())
+    {
+        return;
+    }
 
-	FHitResult Hit = {};
-	OwnerController->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
-	APlayerUnit* NewHovered = Cast<APlayerUnit>(Hit.GetActor());
+    FHitResult Hit = {};
+    OwnerController->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
+    APlayerUnit* NewHovered = Cast<APlayerUnit>(Hit.GetActor());
 
-	if (NewHovered == HoveredUnit)
-	{
-		return;
-	}
+    if (NewHovered == HoveredUnit)
+    {
+        return;
+    }
 
-	if (HoveredUnit != nullptr)
-	{
-		HoveredUnit->SetHovered(false);
-	}
+    if (HoveredUnit != nullptr)
+    {
+        HoveredUnit->GetSelectionComponent()->SetHovered(false);
+    }
 
-	HoveredUnit = NewHovered;
+    HoveredUnit = NewHovered;
 
-	if (HoveredUnit != nullptr)
-	{
-		HoveredUnit->SetHovered(true);
-	}
+    if (HoveredUnit != nullptr)
+    {
+        HoveredUnit->GetSelectionComponent()->SetHovered(true);
+    }
 }
 
 void USelectionComponent::UpdateDrag(const FVector2D& MousePos)
 {
-	DragState.Update(MousePos, DragThreshold);
-	if (!DragState.IsDragging())
-	{
-		return;
-	}
+    DragState.Update(MousePos, DragThreshold);
+    if (!DragState.IsDragging())
+    {
+        return;
+    }
 
-	TArray<APlayerUnit*> InRect;
-	GetUnitsInRect(DragState.GetDragStart(), MousePos, InRect);
+    TArray<APlayerUnit*> InRect;
+    GetUnitsInRect(DragState.GetDragStart(), MousePos, InRect);
 
-	//
-	// Un-hover units that left the box
-	//
+    //
+    // Un-hover units that left the box
+    //
 
-	for (APlayerUnit* Unit : DragHoveredUnits)
-	{
-		if (Unit != nullptr && !InRect.Contains(Unit))
-		{
-			Unit->SetHovered(false);
-		}
-	}
+    for (APlayerUnit* Unit : DragHoveredUnits)
+    {
+        if (Unit != nullptr && !InRect.Contains(Unit))
+        {
+            Unit->GetSelectionComponent()->SetHovered(false);
+        }
+    }
 
-	//
-	// Hover units inside the box
-	//
+    //
+    // Hover units inside the box
+    //
 
-	DragHoveredUnits.Reset();
-	for (APlayerUnit* Unit : InRect)
-	{
-		Unit->SetHovered(true);
-		DragHoveredUnits.Add(Unit);
-	}
+    DragHoveredUnits.Reset();
+    for (APlayerUnit* Unit : InRect)
+    {
+        Unit->GetSelectionComponent()->SetHovered(true);
+        DragHoveredUnits.Add(Unit);
+    }
 }
 
 void USelectionComponent::BeginPress(const FVector2D& MousePos)
 {
-	DragState.Begin(MousePos);
+    DragState.Begin(MousePos);
 }
 
 void USelectionComponent::EndPress(const FVector2D& MousePos)
 {
-	const FVector2D DragStart = DragState.GetDragStart();
-	const bool bWasDrag = DragState.Complete();
+    const FVector2D DragStart = DragState.GetDragStart();
+    const bool bWasDrag = DragState.Complete();
 
-	//
-	// Box selection
-	//
+    //
+    // Box selection
+    //
 
-	if (bWasDrag)
-	{
-		// Drag hover is over, the selection state stays untouched
-		for (APlayerUnit* Unit : DragHoveredUnits)
-		{
-			if (Unit != nullptr)
-			{
-				Unit->SetHovered(false);
-			}
-		}
-		DragHoveredUnits.Reset();
+    if (bWasDrag)
+    {
+        // Drag hover is over, the selection state stays untouched
+        for (APlayerUnit* Unit : DragHoveredUnits)
+        {
+            if (Unit != nullptr)
+            {
+                Unit->GetSelectionComponent()->SetHovered(false);
+            }
+        }
+        DragHoveredUnits.Reset();
 
-		TArray<APlayerUnit*> InRect;
-		GetUnitsInRect(DragStart, MousePos, InRect);
+        TArray<APlayerUnit*> InRect;
+        GetUnitsInRect(DragStart, MousePos, InRect);
 
-		if (!bAddToSelection)
-		{
-			ClearSelection();
-		}
+        if (!bAddToSelection)
+        {
+            ClearSelection();
+        }
 
-		for (APlayerUnit* Unit : InRect)
-		{
-			Unit->SetSelected(true);
-			SelectedUnits.AddUnique(Unit);
-		}
-		return;
-	}
+        for (APlayerUnit* Unit : InRect)
+        {
+            Unit->GetSelectionComponent()->SetSelected(true);
+            SelectedUnits.AddUnique(Unit);
+        }
+        return;
+    }
 
-	//
-	// Click selection
-	//
+    //
+    // Click selection
+    //
 
-	if (!bAddToSelection)
-	{
-		ClearSelection();
-	}
+    if (!bAddToSelection)
+    {
+        ClearSelection();
+    }
 
-	if (HoveredUnit == nullptr)
-	{
-		return;
-	}
+    if (HoveredUnit == nullptr)
+    {
+        return;
+    }
 
-	if (bAddToSelection && SelectedUnits.Contains(HoveredUnit))
-	{
-		// Shift-click on a selected unit toggles it off
-		HoveredUnit->SetSelected(false);
-		SelectedUnits.Remove(HoveredUnit);
-	}
-	else
-	{
-		HoveredUnit->SetSelected(true);
-		SelectedUnits.AddUnique(HoveredUnit);
-	}
+    if (bAddToSelection && SelectedUnits.Contains(HoveredUnit))
+    {
+        // Shift-click on a selected unit toggles it off
+        HoveredUnit->GetSelectionComponent()->SetSelected(false);
+        SelectedUnits.Remove(HoveredUnit);
+    }
+    else
+    {
+        HoveredUnit->GetSelectionComponent()->SetSelected(true);
+        SelectedUnits.AddUnique(HoveredUnit);
+    }
 }
 
 void USelectionComponent::CancelPress()
 {
-	DragState.Reset();
+    DragState.Reset();
 
-	for (APlayerUnit* Unit : DragHoveredUnits)
-	{
-		if (Unit != nullptr)
-		{
-			Unit->SetHovered(false);
-		}
-	}
-	DragHoveredUnits.Reset();
+    for (APlayerUnit* Unit : DragHoveredUnits)
+    {
+        if (Unit != nullptr)
+        {
+            Unit->GetSelectionComponent()->SetHovered(false);
+        }
+    }
+    DragHoveredUnits.Reset();
 }
 
 void USelectionComponent::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	OwnerController = Cast<APlayerController>(GetOwner());
-	if (OwnerController == nullptr)
-	{
-		UE_LOG(LogEmberfall, Error, TEXT("%s: Owner is not a PlayerController."), *GetNameSafe(this));
-	}
+    OwnerController = Cast<APlayerController>(GetOwner());
+    if (OwnerController == nullptr)
+    {
+        UE_LOG(LogEmberfall, Error, TEXT("%s: Owner is not a PlayerController."), *GetNameSafe(this));
+    }
 }
 
 void USelectionComponent::ClearSelection()
 {
-	for (APlayerUnit* Unit : SelectedUnits)
-	{
-		if (Unit != nullptr)
-		{
-			Unit->SetSelected(false);
-		}
-	}
-	SelectedUnits.Reset();
+    for (APlayerUnit* Unit : SelectedUnits)
+    {
+        if (Unit != nullptr)
+        {
+            Unit->GetSelectionComponent()->SetSelected(false);
+        }
+    }
+    SelectedUnits.Reset();
 }
 
 void USelectionComponent::GetUnitsInRect(const FVector2D& A, const FVector2D& B, TArray<APlayerUnit*>& OutUnits) const
 {
-	OutUnits.Reset();
+    OutUnits.Reset();
 
-	if (OwnerController == nullptr)
-	{
-		return;
-	}
+    if (OwnerController == nullptr)
+    {
+        return;
+    }
 
-	const FVector2D Min{ FMath::Min(A.X, B.X), FMath::Min(A.Y, B.Y) };
-	const FVector2D Max{ FMath::Max(A.X, B.X), FMath::Max(A.Y, B.Y) };
+    const FVector2D Min{FMath::Min(A.X, B.X), FMath::Min(A.Y, B.Y)};
+    const FVector2D Max{FMath::Max(A.X, B.X), FMath::Max(A.Y, B.Y)};
 
-	for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
-	{
-		APlayerUnit* Unit = *It;
+    for (TActorIterator<APlayerUnit> It(GetWorld()); It; ++It)
+    {
+        APlayerUnit* Unit = *It;
 
-		FVector2D ScreenPos;
-		if (!OwnerController->ProjectWorldLocationToScreen(Unit->GetActorLocation(), ScreenPos))
-		{
-			continue;
-		}
+        FVector2D ScreenPos;
+        if (!OwnerController->ProjectWorldLocationToScreen(Unit->GetActorLocation(), ScreenPos))
+        {
+            continue;
+        }
 
-		if (ScreenPos.X >= Min.X && ScreenPos.X <= Max.X &&
-			ScreenPos.Y >= Min.Y && ScreenPos.Y <= Max.Y)
-		{
-			OutUnits.Add(Unit);
-		}
-	}
+        if (ScreenPos.X >= Min.X && ScreenPos.X <= Max.X &&
+            ScreenPos.Y >= Min.Y && ScreenPos.Y <= Max.Y)
+        {
+            OutUnits.Add(Unit);
+        }
+    }
 }

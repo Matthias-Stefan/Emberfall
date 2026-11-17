@@ -62,6 +62,24 @@ public:
     static double DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd);
 
     /**
+     * @brief Computes the squared distance in the ground plane from a point to a footprint.
+     * @param Position is the point in world space in cm.
+     * @param Corners is the footprint corners in world space in cm, in winding order.
+     * @param OutClosestPoint is filled with the closest point of the footprint in the ground plane in cm, @c Position if it lies inside.
+     * @return Squared distance in cm², @c 0 if @c Position lies inside or on the footprint.
+     */
+    static float DistanceSquaredToFootprint2D(const FVector& Position, const TArray<FVector>& Corners,
+        FVector2D& OutClosestPoint);
+
+    /**
+     * @brief Computes the squared distance in the ground plane from a point to a footprint.
+     * @param Position is the point in world space in cm.
+     * @param Corners is the footprint corners in world space in cm, in winding order.
+     * @return Squared distance in cm², @c 0 if @c Position lies inside or on the footprint.
+     */
+    static float DistanceSquaredToFootprint2D(const FVector& Position, const TArray<FVector>& Corners);
+    
+    /**
      * @brief Tests whether two edges cross and computes where the first edge is hit.
      * @param FirstStart is the start point of the first edge.
      * @param FirstEnd is the end point of the first edge.

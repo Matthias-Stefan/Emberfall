@@ -153,6 +153,69 @@ double FCoverGeometry::DistanceToLine2D(const FVector& Point, const FVector& Lin
     return FMath::Abs(FVector2D::CrossProduct(LineDirection, ToPoint)) / LineLength;
 }
 
+float FCoverGeometry::DistanceSquaredToFootprint2D(
+    const FVector& Position, const TArray<FVector>& Corners, FVector2D& OutClosestPoint)
+{
+    const FVector2D Point(Position.X, Position.Y);
+    OutClosestPoint = Point;
+
+    // Too few corners do not form a footprint, report it as infinitely far away.
+    if (Corners.Num() < 3)
+    {
+        return TNumericLimits<float>::Max();
+    }
+
+    double BestDistanceSquared = TNumericLimits<double>::Max();
+
+    // Precondition: the footprint is convex. Inside means the point is on the same side of every edge.
+    bool bAnyEdgeLeft = false;
+    bool bAnyEdgeRight = false;
+
+    for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
+    {
+        const FVector& StartCorner = Corners[CornerIndex];
+        const FVector& EndCorner = Corners[(CornerIndex + 1) % Corners.Num()];
+
+        const FVector2D EdgeStart(StartCorner.X, StartCorner.Y);
+        const FVector2D Edge = FVector2D(EndCorner.X, EndCorner.Y) - EdgeStart;
+        const FVector2D StartToPoint = Point - EdgeStart;
+
+        const double Side = FVector2D::CrossProduct(Edge, StartToPoint);
+        bAnyEdgeLeft |= Side > 0.0;
+        bAnyEdgeRight |= Side < 0.0;
+
+        const double EdgeLengthSquared = Edge.SizeSquared();
+
+        // A degenerate edge collapses to its start point.
+        const double Fraction = EdgeLengthSquared > UE_SMALL_NUMBER
+            ? FMath::Clamp(FVector2D::DotProduct(StartToPoint, Edge) / EdgeLengthSquared, 0.0, 1.0)
+            : 0.0;
+
+        const FVector2D ClosestOnEdge = EdgeStart + Edge * Fraction;
+        const double CandidateDistanceSquared = FVector2D::DistSquared(Point, ClosestOnEdge);
+        if (CandidateDistanceSquared < BestDistanceSquared)
+        {
+            BestDistanceSquared = CandidateDistanceSquared;
+            OutClosestPoint = ClosestOnEdge;
+        }
+    }
+
+    // Never strictly left and strictly right of the edges at once means inside or on the border.
+    if (!(bAnyEdgeLeft && bAnyEdgeRight))
+    {
+        OutClosestPoint = Point;
+        return 0.0f;
+    }
+
+    return static_cast<float>(BestDistanceSquared);
+}
+
+float FCoverGeometry::DistanceSquaredToFootprint2D(const FVector& Position, const TArray<FVector>& Corners)
+{
+    FVector2D IgnoredClosestPoint;
+    return DistanceSquaredToFootprint2D(Position, Corners, IgnoredClosestPoint);
+}
+
 bool FCoverGeometry::EdgeIntersect2D(const FVector& FirstStart, const FVector& FirstEnd, const FVector& SecondStart,
     const FVector& SecondEnd, double& OutFirstFraction)
 {
