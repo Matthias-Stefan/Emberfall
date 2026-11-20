@@ -1,14 +1,16 @@
-﻿// Copyright (c) 2026 Emberfall. All Rights Reserved.
+// Copyright (c) 2026 Emberfall. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 
+#include "Emberfall/Core/Geometry/Polygon2D.h"
+#include "Emberfall/Core/Geometry/Polyline2D.h"
 #include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
 
 /**
- * @brief Pure 2D helpers for cover footprints and outlines; ignores Z and holds no state.
+ * @brief Cover-specific geometry helpers and the bridge from world-space corner lists to the generic 2D geometry classes.
  */
 class EMBERFALL_API FCoverGeometry
 {
@@ -19,87 +21,30 @@ public:
     FCoverGeometry() = delete;
 
     /**
-     * @brief Tests whether a point lies inside or on the border of a convex quad.
-     * @param QuadCorners is the list of the four quad corners, either winding order.
-     * @param Point is the position to test.
-     * @return @c true if @c Point is inside or on the border, @c false if outside or fewer than three corners are given.
+     * @brief Converts a list of world-space corners to a polygon in the ground plane, dropping Z.
+     * @param Corners is the list of corners in world space in cm, in order.
+     * @return Polygon with the X and Y of every corner.
      */
-    static bool ContainsPoint2D(const TArray<FVector>& QuadCorners, const FVector& Point);
+    [[nodiscard]] static FPolygon2D ToPolygon2D(const TArray<FVector>& Corners);
 
     /**
-     * @brief Tests whether a point lies strictly inside a convex quad, points on the border do not count.
-     * @param QuadCorners is the list of the four quad corners, either winding order.
-     * @param Point is the position to test.
-     * @param BorderTolerance is the distance to every edge in cm below which the point counts as on the border.
-     * @return @c true if @c Point is farther than @c BorderTolerance inside every edge, otherwise @c false.
+     * @brief Converts a list of world-space points to a polyline in the ground plane, dropping Z.
+     * @param Points is the list of points in world space in cm, in order.
+     * @param bIsClosed is whether the last point connects back to the first.
+     * @return Polyline with the X and Y of every point.
      */
-    static bool ContainsPointStrict2D(const TArray<FVector>& QuadCorners, const FVector& Point, double BorderTolerance);
+    [[nodiscard]] static FPolyline2D ToPolyline2D(const TArray<FVector>& Points, bool bIsClosed);
 
     /**
-     * @brief Tests whether a point lies on the border of a closed loop.
-     * @param LoopCorners is the list of the loop corners, in order.
-     * @param Point is the position to test.
-     * @param BorderTolerance is the distance to an edge in cm below which the point counts as on the border.
-     * @return @c true if @c Point is at most @c BorderTolerance away from any edge, otherwise @c false.
+     * @brief Grows a convex footprint outward by a distance, keeping the corners sharp.
+     * @param ConvexCorners is the list of the footprint corners in world space in cm, either winding order.
+     * @param Offset is the distance each edge is pushed outward in cm.
+     * @param MiterLimit is the maximum corner shift as a multiple of @c Offset.
+     * @param OutCorners is filled with the grown corners in world space in cm, counterclockwise, each at the height of its source corner.
+     * @return @c true if the footprint was grown, @c false if there are fewer than three corners or a corner spikes.
      */
-    static bool IsOnBorder2D(const TArray<FVector>& LoopCorners, const FVector& Point, double BorderTolerance);
-
-    /**
-     * @brief Computes the squared distance between two convex quads.
-     * @param FirstQuadCorners is the list of the four corners of the first quad.
-     * @param SecondQuadCorners is the list of the four corners of the second quad.
-     * @return Squared distance in cm², @c 0 if the quads touch or overlap.
-     */
-    static double DistanceSquared2D(const TArray<FVector>& FirstQuadCorners, const TArray<FVector>& SecondQuadCorners);
-
-    /**
-     * @brief Computes the distance of a point to the infinite line through two points.
-     * @param Point is the position to measure from.
-     * @param LineStart is the first point on the line.
-     * @param LineEnd is the second point on the line.
-     * @return Distance in cm, the distance to @c LineStart if both line points coincide.
-     */
-    static double DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd);
-
-    /**
-     * @brief Computes the squared distance in the ground plane from a point to a footprint.
-     * @param Position is the point in world space in cm.
-     * @param Corners is the footprint corners in world space in cm, in winding order.
-     * @param OutClosestPoint is filled with the closest point of the footprint in the ground plane in cm, @c Position if it lies inside.
-     * @return Squared distance in cm², @c 0 if @c Position lies inside or on the footprint.
-     */
-    static float DistanceSquaredToFootprint2D(const FVector& Position, const TArray<FVector>& Corners,
-        FVector2D& OutClosestPoint);
-
-    /**
-     * @brief Computes the squared distance in the ground plane from a point to a footprint.
-     * @param Position is the point in world space in cm.
-     * @param Corners is the footprint corners in world space in cm, in winding order.
-     * @return Squared distance in cm², @c 0 if @c Position lies inside or on the footprint.
-     */
-    static float DistanceSquaredToFootprint2D(const FVector& Position, const TArray<FVector>& Corners);
-    
-    /**
-     * @brief Tests whether two edges cross and computes where the first edge is hit.
-     * @param FirstStart is the start point of the first edge.
-     * @param FirstEnd is the end point of the first edge.
-     * @param SecondStart is the start point of the second edge.
-     * @param SecondEnd is the end point of the second edge.
-     * @param OutFirstFraction is filled with the crossing position along the first edge, @c 0 at @c FirstStart and @c 1 at @c FirstEnd.
-     * @return @c true if the edges cross, @c false if they are parallel or do not reach each other.
-     */
-    static bool EdgeIntersect2D(const FVector& FirstStart, const FVector& FirstEnd,
-        const FVector& SecondStart, const FVector& SecondEnd, double& OutFirstFraction);
-
-    /**
-     * @brief Splits an edge into consecutive pieces at the given positions along it.
-     * @param EdgeStart is the start point of the edge.
-     * @param EdgeEnd is the end point of the edge.
-     * @param Fractions is the list of split positions along the edge, @c 0 at @c EdgeStart and @c 1 at @c EdgeEnd, in any order.
-     * @param OutPieces is filled with the pieces from @c EdgeStart to @c EdgeEnd, previous content is discarded.
-     */
-    static void SplitEdgeAtFractions2D(const FVector& EdgeStart, const FVector& EdgeEnd,
-        const TArray<double>& Fractions, TArray<FCoverEdgePiece>& OutPieces);
+    static bool BuildGrownCorners(const TArray<FVector>& ConvexCorners, double Offset, double MiterLimit,
+        TArray<FVector>& OutCorners);
 
     /**
      * @brief Determines which local side of a wall an edge piece lies on.
@@ -109,91 +54,4 @@ public:
      * @return The side whose axis is closest to @c OutwardNormal.
      */
     static ECoverSide ClassifySide2D(const FVector2D& OutwardNormal, const FVector2D& AxisX, const FVector2D& AxisY);
-
-    /**
-     * @brief Pushes every edge of a convex polygon outward and intersects neighboring edges, keeping the corners sharp.
-     * @param ConvexCorners is the list of the polygon corners, either winding order.
-     * @param Offset is the distance each edge is pushed outward in cm.
-     * @param OutLoop is filled with the corners of the grown polygon, in the winding order of positive signed area.
-     * @return @c true if the polygon was grown, @c false if fewer than three corners or a corner is a spike.
-     */
-    static bool BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, double Offset, TArray<FVector>& OutLoop);
-
-    /**
-     * @brief Computes the area enclosed by a closed polygon, ignoring Z.
-     * @param Points is the list of polygon corners in order, the last one connects back to the first.
-     * @return Area in cm², always positive regardless of the winding.
-     */
-    static double Area2D(const TArray<FVector>& Points);
-
-    /**
-     * @brief Removes points from an open polyline that deviate less than a tolerance from the simplified line.
-     * @param Points is the list of polyline points in order.
-     * @param Tolerance is the largest distance in cm a dropped point may have from the simplified line.
-     * @param OutPoints is filled with the kept points in order, first and last point are always kept.
-     */
-    static void SimplifyPolyline2D(const TArray<FVector>& Points, double Tolerance, TArray<FVector>& OutPoints);
-    
-    /**
-     * @brief Computes the length of an open polyline, ignoring Z.
-     * @param Points is the list of polyline points in order.
-     * @return Length in cm, @c 0 if fewer than two points are given.
-     */
-    static double PolylineLength2D(const TArray<FVector>& Points);
-    
-private:
-    /**
-     * @brief Steps one element forward in a ring, the last element is followed by the first.
-     * @param Index is the current index.
-     * @param Count is the number of elements in the ring.
-     * @return @c Index + 1, or @c 0 if @c Index is the last element.
-     */
-    static int32 NextIndex(int32 Index, int32 Count);
-
-    /**
-     * @brief Steps one element backward in a ring, the first element is preceded by the last.
-     * @param Index is the current index.
-     * @param Count is the number of elements in the ring.
-     * @return @c Index - 1, or @c Count - 1 if @c Index is the first element.
-     */
-    static int32 PreviousIndex(int32 Index, int32 Count);
-    
-    /**
-     * @brief Drops the Z component of a point.
-     * @param Point is the position to flatten.
-     * @return The point with @c Z set to @c 0, as needed by the 3D engine segment functions.
-     */
-    static FVector ToGround(const FVector& Point);
-    
-    /**
-     * @brief Computes the area of a closed polygon with a sign for its winding, ignoring Z.
-     * @param Points is the list of polygon corners in order, the last one connects back to the first.
-     * @return Area in cm², positive for counterclockwise winding, @c 0 if fewer than three points are given.
-     */
-    static double SignedArea2D(const TArray<FVector>& Points);
-    
-    /**
-     * @brief Computes on which side of a directed edge a point lies, as the 2D cross product.
-     * @param EdgeStart is the start point of the edge.
-     * @param EdgeEnd is the end point of the edge.
-     * @param Point is the position to test.
-     * @return Cross product in cm², positive if @c Point lies left of the edge, negative if right, @c 0 if on the line.
-     */
-    static double SideOfEdge2D(const FVector& EdgeStart, const FVector& EdgeEnd, const FVector& Point);
-    
-    /**
-     * @brief Computes the distance of a point to the infinite line through two points, with a sign for the side.
-     * @param Point is the position to measure from.
-     * @param LineStart is the first point on the line.
-     * @param LineEnd is the second point on the line.
-     * @return Distance in cm, positive if left of the line, negative if right, the unsigned distance to @c LineStart if both line points coincide.
-     */
-    static double SignedDistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd);
-    
-    /**
-     * @brief Computes the normal that points to the right of a direction.
-     * @param Direction is the normalized ground-plane direction.
-     * @return The normal rotated 90 degrees clockwise.
-     */
-    static FVector2D RightNormal2D(const FVector2D& Direction);
 };

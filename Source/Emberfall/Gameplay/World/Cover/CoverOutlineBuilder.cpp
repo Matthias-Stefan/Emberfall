@@ -38,9 +38,9 @@ void FCoverOutlineBuilder::Build(const FCoverGroup& Group, TArray<FCoverLoop>& O
         // Tiny loops and short chains are leftovers of imprecise placement, not real cover paths.
         const bool bKeep = SimplifiedLoop.bIsClosed
             ? SimplifiedLoop.Points.Num() >= 3
-                && FCoverGeometry::Area2D(SimplifiedLoop.Points) >= Settings.OutlineMinLoopArea
+                && FCoverGeometry::ToPolygon2D(SimplifiedLoop.Points).GetArea() >= Settings.OutlineMinLoopArea
             : SimplifiedLoop.Points.Num() >= 2
-                && FCoverGeometry::PolylineLength2D(SimplifiedLoop.Points) >= Settings.OutlineMinChainLength;
+                && FCoverGeometry::ToPolyline2D(SimplifiedLoop.Points, false).GetLength() >= Settings.OutlineMinChainLength;
 
         if (bKeep)
         {
@@ -54,6 +54,14 @@ void FCoverOutlineBuilder::FilterOuterPieces(const TArray<FCoverGrownFootprint>&
 {
     OutPieces.Reset();
 
+    // Built once, every edge is tested against the polygons of all other footprints.
+    TArray<FPolygon2D> Polygons;
+    Polygons.Reserve(Footprints.Num());
+    for (const FCoverGrownFootprint& Footprint : Footprints)
+    {
+        Polygons.Add(FCoverGeometry::ToPolygon2D(Footprint.Corners));
+    }
+
     for (int32 FootprintIndex = 0; FootprintIndex < Footprints.Num(); ++FootprintIndex)
     {
         const FCoverGrownFootprint& Footprint = Footprints[FootprintIndex];
@@ -65,9 +73,8 @@ void FCoverOutlineBuilder::FilterOuterPieces(const TArray<FCoverGrownFootprint>&
             const FVector& EdgeEnd = Corners[(CornerIndex + 1) % Corners.Num()];
 
             // All footprints have positive area, so the right-hand normal points out of the footprint.
-            const FVector2D EdgeDirection =
-                FVector2D(EdgeEnd.X - EdgeStart.X, EdgeEnd.Y - EdgeStart.Y).GetSafeNormal();
-            const FVector2D OutwardNormal(EdgeDirection.Y, -EdgeDirection.X);
+            const FSegment2D Edge(FVector2D(EdgeStart.X, EdgeStart.Y), FVector2D(EdgeEnd.X, EdgeEnd.Y));
+            const FVector2D OutwardNormal = Edge.GetRightNormal();
 
             // A disabled side keeps its shape for the inside tests of the neighbors but delivers no pieces.
             const ECoverSide Side = FCoverGeometry::ClassifySide2D(OutwardNormal, Footprint.AxisX, Footprint.AxisY);
@@ -76,7 +83,7 @@ void FCoverOutlineBuilder::FilterOuterPieces(const TArray<FCoverGrownFootprint>&
                 continue;
             }
 
-            TArray<double> Fractions;
+            TArray<double> Alphas;
             for (int32 OtherIndex = 0; OtherIndex < Footprints.Num(); ++OtherIndex)
             {
                 if (OtherIndex == FootprintIndex)
@@ -84,27 +91,20 @@ void FCoverOutlineBuilder::FilterOuterPieces(const TArray<FCoverGrownFootprint>&
                     continue;
                 }
 
-                const TArray<FVector>& OtherCorners = Footprints[OtherIndex].Corners;
-                for (int32 OtherCornerIndex = 0; OtherCornerIndex < OtherCorners.Num(); ++OtherCornerIndex)
+                TArray<double> OtherAlphas;
+                if (Polygons[OtherIndex].IntersectSegment(Edge, OtherAlphas))
                 {
-                    double Fraction = 0.0;
-                    if (FCoverGeometry::EdgeIntersect2D(
-                            EdgeStart, EdgeEnd,
-                            OtherCorners[OtherCornerIndex],
-                            OtherCorners[(OtherCornerIndex + 1) % OtherCorners.Num()],
-                            Fraction))
-                    {
-                        Fractions.Add(Fraction);
-                    }
+                    Alphas.Append(OtherAlphas);
                 }
             }
 
-            TArray<FCoverEdgePiece> Pieces;
-            FCoverGeometry::SplitEdgeAtFractions2D(EdgeStart, EdgeEnd, Fractions, Pieces);
-
-            // Copy on purpose, the piece gets the index of its footprint before it is stored.
-            for (FCoverEdgePiece Piece : Pieces)
+            // The segment has no height, the pieces take the one of the edge start.
+            for (const FSegment2D& PieceSegment : Edge.SplitAtAlphas(Alphas))
             {
+                FCoverEdgePiece Piece;
+                Piece.Start = FVector(PieceSegment.GetStart(), EdgeStart.Z);
+                Piece.End = FVector(PieceSegment.GetEnd(), EdgeStart.Z);
+
                 const FVector MidPoint = (Piece.Start + Piece.End) * 0.5;
                 if (IsPieceOuter(Footprints, FootprintIndex, OutwardNormal, MidPoint))
                 {
@@ -254,7 +254,8 @@ void FCoverOutlineBuilder::BuildGrownFootprints(const FCoverGroup& Group,
         }
 
         FCoverGrownFootprint Footprint;
-        if (!FCoverGeometry::BuildOffsetPolygon2D(Corners, Settings.OutlineOffset, Footprint.Corners))
+        if (!FCoverGeometry::BuildGrownCorners(Corners, Settings.OutlineOffset, Settings.OutlineMiterLimit,
+                                               Footprint.Corners))
         {
             continue;
         }
@@ -273,6 +274,7 @@ bool FCoverOutlineBuilder::IsPieceOuter(const TArray<FCoverGrownFootprint>& Foot
     const FVector2D& OutwardNormal, const FVector& MidPoint) const
 {
     const double BorderTolerance = Settings.OutlineBorderTolerance;
+    const FVector2D FlatMidPoint(MidPoint.X, MidPoint.Y);
 
     for (int32 OtherIndex = 0; OtherIndex < Footprints.Num(); ++OtherIndex)
     {
@@ -282,14 +284,17 @@ bool FCoverOutlineBuilder::IsPieceOuter(const TArray<FCoverGrownFootprint>& Foot
         }
 
         const FCoverGrownFootprint& Other = Footprints[OtherIndex];
-        if (FCoverGeometry::ContainsPointStrict2D(Other.Corners, MidPoint, BorderTolerance))
+        const FPolygon2D OtherPolygon = FCoverGeometry::ToPolygon2D(Other.Corners);
+
+        // Strictly inside: inside and not within the tolerance of the border.
+        if (OtherPolygon.ContainsPoint(FlatMidPoint) && !OtherPolygon.IsOnBorder(FlatMidPoint, BorderTolerance))
         {
             return false;
         }
 
         // Flush neighbors produce the same piece twice. The lower footprint only counts as the keeper
         // if it has this side enabled, otherwise nobody would keep the piece and the outline gets a gap.
-        if (OtherIndex < OwnFootprintIndex && FCoverGeometry::IsOnBorder2D(Other.Corners, MidPoint, BorderTolerance))
+        if (OtherIndex < OwnFootprintIndex && OtherPolygon.IsOnBorder(FlatMidPoint, BorderTolerance))
         {
             const ECoverSide OtherSide = FCoverGeometry::ClassifySide2D(OutwardNormal, Other.AxisX, Other.AxisY);
             if (EnumHasAnyFlags(Other.EnabledSides, OtherSide))
@@ -306,65 +311,16 @@ void FCoverOutlineBuilder::SimplifyLoop(const FCoverLoop& Loop, FCoverLoop& OutL
     OutLoop.bIsClosed = Loop.bIsClosed;
     OutLoop.Points.Reset();
 
-    if (!Loop.bIsClosed)
-    {
-        FCoverGeometry::SimplifyPolyline2D(Loop.Points, Settings.OutlineSimplifyTolerance, OutLoop.Points);
-        return;
-    }
-    
-    const TArray<FVector>& Points = Loop.Points;
-    const int32 PointCount = Points.Num();
-    if (PointCount < 4)
-    {
-        OutLoop.Points = Points;
-        return;
-    }
+    // Point 0 of a closed loop is not necessarily a real corner. The simplification cuts the loop at point 0 and
+    // at the point farthest from it, both are far apart and almost always sit on corners, which it always keeps.
+    const FPolyline2D Polyline = FCoverGeometry::ToPolyline2D(Loop.Points, Loop.bIsClosed);
+    TArray<int32> KeptIndices;
+    Polyline.CollectSimplifiedIndices(Settings.OutlineSimplifyTolerance, KeptIndices);
 
-    // Point 0 is not necessarily a real corner, so the loop is cut at point 0 and at the point farthest from it.
-    // Both are far apart and almost always sit on corners, which the simplification always keeps.
-    int32 SplitIndex = INDEX_NONE;
-    double FarthestDistanceSquared = 0.0;
-    for (int32 PointIndex = 1; PointIndex < PointCount; ++PointIndex)
+    // The polyline has no height, so the kept points are taken from the loop itself.
+    OutLoop.Points.Reserve(KeptIndices.Num());
+    for (const int32 KeptIndex : KeptIndices)
     {
-        const double DistanceSquared = FVector::DistSquared2D(Points[0], Points[PointIndex]);
-        if (DistanceSquared > FarthestDistanceSquared)
-        {
-            FarthestDistanceSquared = DistanceSquared;
-            SplitIndex = PointIndex;
-        }
-    }
-
-    if (SplitIndex == INDEX_NONE)
-    {
-        OutLoop.Points = Points;
-        return;
-    }
-
-    // First half runs from point 0 to the split point, second half from the split point back around to point 0.
-    TArray<FVector> FirstHalf;
-    for (int32 PointIndex = 0; PointIndex <= SplitIndex; ++PointIndex)
-    {
-        FirstHalf.Add(Points[PointIndex]);
-    }
-
-    TArray<FVector> SecondHalf;
-    for (int32 PointIndex = SplitIndex; PointIndex < PointCount; ++PointIndex)
-    {
-        SecondHalf.Add(Points[PointIndex]);
-    }
-    SecondHalf.Add(Points[0]);
-
-    const double Tolerance = Settings.OutlineSimplifyTolerance;
-    TArray<FVector> SimplifiedFirstHalf;
-    TArray<FVector> SimplifiedSecondHalf;
-    FCoverGeometry::SimplifyPolyline2D(FirstHalf, Tolerance, SimplifiedFirstHalf);
-    FCoverGeometry::SimplifyPolyline2D(SecondHalf, Tolerance, SimplifiedSecondHalf);
-
-    // The split point ends the first half and starts the second, point 0 ends the second half and starts the first.
-    // Each is taken once, so no zero-length edge appears.
-    OutLoop.Points = SimplifiedFirstHalf;
-    for (int32 PointIndex = 1; PointIndex < SimplifiedSecondHalf.Num() - 1; ++PointIndex)
-    {
-        OutLoop.Points.Add(SimplifiedSecondHalf[PointIndex]);
+        OutLoop.Points.Add(Loop.Points[KeptIndex]);
     }
 }

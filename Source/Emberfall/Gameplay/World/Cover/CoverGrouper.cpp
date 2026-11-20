@@ -55,7 +55,9 @@ void FCoverGrouper::Build(const TArray<ACoverObject*>& Objects, TArray<FCoverGro
             continue;
         }
 
-        if (FCoverGeometry::DistanceSquared2D(FirstCorners, SecondCorners) <= MergeRadiusSquared)
+        const FPolygon2D FirstFootprint = FCoverGeometry::ToPolygon2D(FirstCorners);
+        const FPolygon2D SecondFootprint = FCoverGeometry::ToPolygon2D(SecondCorners);
+        if (FirstFootprint.DistanceSquaredToPolygon(SecondFootprint) <= MergeRadiusSquared)
         {
             Sets.Merge(*FirstIndex, *SecondIndex);
         }

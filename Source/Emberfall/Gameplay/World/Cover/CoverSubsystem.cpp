@@ -145,7 +145,13 @@ void UCoverSubsystem::QueryCoverObjectsInDistance(const FVector& Position, float
             continue;
         }
 
-        const float DistanceSquared = FCoverGeometry::DistanceSquaredToFootprint2D(Position, FootprintCorners);
+        const FPolygon2D Footprint = FCoverGeometry::ToPolygon2D(FootprintCorners);
+        if (!Footprint.IsValid())
+        {
+            continue;
+        }
+
+        const double DistanceSquared = Footprint.DistanceSquaredToPoint(FVector2D(Position.X, Position.Y));
         if (DistanceSquared <= MaxDistanceSquared)
         {
             OutCoverObjects.Add(Candidate);
@@ -186,8 +192,8 @@ void UCoverSubsystem::QueryCoverEdgesInDistance(const FVector& Position, float M
 
             const FVector& Start = Corners[EdgeIndex];
             const FVector& End = Corners[(EdgeIndex + 1) % Corners.Num()];
-            const FVector2D ClosestPoint = FMath::ClosestPointOnSegment2D(
-                Point, FVector2D(Start.X, Start.Y), FVector2D(End.X, End.Y));
+            const FSegment2D Edge(FVector2D(Start.X, Start.Y), FVector2D(End.X, End.Y));
+            const FVector2D ClosestPoint = Edge.GetClosestPoint(Point);
 
             const double Distance = FVector2D::Distance(Point, ClosestPoint);
             if (Distance > MaxDistance)

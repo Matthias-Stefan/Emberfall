@@ -68,6 +68,22 @@ public:
         return FSegment2D(Start, End);
     }
 
+    /**
+     * @brief Collects all segments of the polygon in order.
+     * @return Copy of all segments, segment @c i starts at corner @c i, the last one ends at the first corner.
+     */
+    [[nodiscard]] TArray<FSegment2D> GetSegments() const
+    {
+        TArray<FSegment2D> Segments;
+        Segments.Reserve(GetPointNum());
+        for (int32 Index = 0; Index < GetPointNum(); ++Index)
+        {
+            Segments.Add(GetSegment(Index));
+        }
+
+        return Segments;
+    }
+    
     //~=============================================================================
     // Shape
 
@@ -75,7 +91,7 @@ public:
      * @brief Computes the signed area of the polygon with the shoelace formula.
      * @return Area in cm², positive if the corners run counterclockwise (X towards Y), negative if clockwise, @c 0 if there are fewer than three corners.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT double GetSignedArea() const;
+    [[nodiscard]] double GetSignedArea() const;
 
     /**
      * @brief Computes the area of the polygon.
@@ -91,13 +107,13 @@ public:
      * @brief Computes the length of the border.
      * @return Perimeter in cm, @c 0 if the polygon has no corners.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT double GetPerimeter() const;
+    [[nodiscard]] double GetPerimeter() const;
 
     /**
      * @brief Computes the area centroid of the polygon.
      * @return Centroid in cm, the average of the corners if the area is practically @c 0, @c ZeroVector if there are no corners.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT FVector2D GetCentroid() const;
+    [[nodiscard]] FVector2D GetCentroid() const;
 
     /**
      * @brief Tests whether the corners run counterclockwise (X towards Y).
@@ -110,17 +126,18 @@ public:
     }
 
     /**
-     * @brief Builds a polygon whose segments are moved along their outward normals, with sharp corners.
-     * @param Distance is the distance every segment is moved in cm, positive grows the polygon, negative shrinks it.
-     * @return Offset polygon, a copy of this polygon if it has fewer than three corners.
+     * @brief Builds a polygon with every segment moved outwards by a distance, using mitered corners.
+     * @param Distance is the outward shift in cm, negative values shrink the polygon.
+     * @param MiterLimit is the maximum corner shift as a multiple of @c Distance.
+     * @return Offset polygon, @c FPolygon2D::Invalid if a corner spikes or the shape collapses.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT FPolygon2D BuildOffset(double Distance) const;
+    [[nodiscard]] FPolygon2D BuildOffset(double Distance, double MiterLimit) const;
     
     /**
      * @brief Tests whether a simple polygon is convex.
      * @return @c true if all corners turn in the same direction, otherwise @c false.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT bool IsConvex() const;
+    [[nodiscard]] bool IsConvex() const;
 
     /**
      * @brief Computes the normalized normal of a segment pointing out of the polygon.
@@ -142,7 +159,7 @@ public:
      * @param Point is the position to test.
      * @return @c true if @c Point is inside, otherwise @c false, positions exactly on the border may go either way.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT bool ContainsPoint(const FVector2D& Point) const;
+    [[nodiscard]] bool ContainsPoint(const FVector2D& Point) const;
 
     /**
      * @brief Tests whether a position lies on the border.
@@ -150,7 +167,7 @@ public:
      * @param Tolerance is the maximum distance to the border in cm.
      * @return @c true if @c Point is within @c Tolerance of the border, otherwise @c false.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT bool IsOnBorder(const FVector2D& Point, double Tolerance) const;
+    [[nodiscard]] bool IsOnBorder(const FVector2D& Point, double Tolerance) const;
 
     //~=============================================================================
     // Distance
@@ -160,22 +177,47 @@ public:
      * @param Point is the position to measure from.
      * @return Index of the corner the closest segment starts at, @c INDEX_NONE if the polygon has no corners.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT int32 FindClosestSegment(const FVector2D& Point) const;
+    [[nodiscard]] int32 FindClosestSegment(const FVector2D& Point) const;
 
     /**
      * @brief Computes the squared distance from a position to the nearest point on the border.
      * @param Point is the position to measure from.
      * @return Distance in cm², @c 0 if @c Point lies on the border, also @c 0 if the polygon has no corners.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT double DistanceSquaredToBorder(const FVector2D& Point) const;
+    [[nodiscard]] double DistanceSquaredToBorder(const FVector2D& Point) const;
 
     /**
      * @brief Computes the squared distance from a position to the polygon area.
      * @param Point is the position to measure from.
      * @return Distance in cm², @c 0 if @c Point is inside or on the border.
      */
-    [[nodiscard]] UE_FORCEINLINE_HINT double DistanceSquaredToPoint(const FVector2D& Point) const;
+    [[nodiscard]] double DistanceSquaredToPoint(const FVector2D& Point) const;
 
+    /**
+     * @brief Computes the point of the polygon area that is closest to a position.
+     * @param Point is the position to measure from.
+     * @return @c Point if it lies inside, otherwise the closest point on the border in cm, @c ZeroVector if the polygon has no corners.
+     */
+    [[nodiscard]] FVector2D GetClosestPoint(const FVector2D& Point) const;
+
+    /**
+     * @brief Computes the squared distance between two polygons.
+     * @param Other is the polygon to measure to.
+     * @return Distance in cm², @c 0 if the polygons touch or overlap, the largest @c double if either has no corners.
+     */
+    [[nodiscard]] double DistanceSquaredToPolygon(const FPolygon2D& Other) const;
+    
+    //~=============================================================================
+    // Intersection
+    
+    /**
+     * @brief Finds where a segment crosses the border of the polygon.
+     * @param Segment is the segment to test.
+     * @param OutAlphas is filled with the crossing positions along @c Segment, @c 0 at its start and @c 1 at its end, sorted ascending, previous content is discarded.
+     * @return @c true if the segment crosses the border at least once, otherwise @c false.
+     */
+    [[nodiscard]] bool IntersectSegment(const FSegment2D& Segment, TArray<double>& OutAlphas) const;
+    
 private:
     /**
      * @brief Computes the index of the following corner, wrapping around at the end.

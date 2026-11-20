@@ -94,3 +94,93 @@ FVector2D FPolyline2D::FindClosestPoint(const FVector2D& Point, double& OutDista
 
     return ClosestPoint;
 }
+
+void FPolyline2D::CollectSimplifiedIndices(double Tolerance, TArray<int32>& OutIndices) const
+{
+    OutIndices.Reset();
+
+    // A closed path is simplified as an open one that returns to its start, the duplicate is dropped afterwards.
+    TArray<FVector2D> Path;
+    Path.Reserve(Points.Num() + 1);
+    Path.Append(Points);
+    if (bIsClosed && !Points.IsEmpty())
+    {
+        // Copied from Points, adding an element of the array itself would break when it reallocates.
+        Path.Add(Points[0]);
+    }
+
+    const int32 PathNum = Path.Num();
+    if (PathNum < 3)
+    {
+        for (int32 Index = 0; Index < GetPointNum(); ++Index)
+        {
+            OutIndices.Add(Index);
+        }
+        return;
+    }
+
+    TArray<bool> KeepPoints;
+    KeepPoints.Init(false, PathNum);
+    KeepPoints[0] = true;
+    KeepPoints[PathNum - 1] = true;
+
+    // Each entry is a range of indices that still has to be checked against its chord.
+    TArray<TPair<int32, int32>> RangeStack;
+    RangeStack.Emplace(0, PathNum - 1);
+
+    while (!RangeStack.IsEmpty())
+    {
+        const TPair<int32, int32> Range = RangeStack.Pop();
+        const FSegment2D Chord(Path[Range.Key], Path[Range.Value]);
+
+        // A closed path has a degenerate first chord, its distance falls back to the start point,
+        // so the point farthest from the start is the first one that gets kept.
+        double FarthestDistance = 0.0;
+        int32 FarthestIndex = INDEX_NONE;
+        for (int32 Index = Range.Key + 1; Index < Range.Value; ++Index)
+        {
+            const double Distance = FMath::Abs(Chord.SignedDistanceToLine(Path[Index]));
+            if (Distance > FarthestDistance)
+            {
+                FarthestDistance = Distance;
+                FarthestIndex = Index;
+            }
+        }
+
+        if (FarthestIndex != INDEX_NONE && FarthestDistance > Tolerance)
+        {
+            KeepPoints[FarthestIndex] = true;
+            RangeStack.Emplace(Range.Key, FarthestIndex);
+            RangeStack.Emplace(FarthestIndex, Range.Value);
+        }
+    }
+
+    for (int32 Index = 0; Index < PathNum; ++Index)
+    {
+        if (KeepPoints[Index])
+        {
+            OutIndices.Add(Index);
+        }
+    }
+
+    // The appended copy of the first point of a closed path is not a point of this polyline.
+    if (bIsClosed)
+    {
+        OutIndices.Pop();
+    }
+}
+
+FPolyline2D FPolyline2D::Simplify(double Tolerance) const
+{
+    TArray<int32> KeptIndices;
+    CollectSimplifiedIndices(Tolerance, KeptIndices);
+
+    TArray<FVector2D> KeptPoints;
+    KeptPoints.Reserve(KeptIndices.Num());
+    for (const int32 KeptIndex : KeptIndices)
+    {
+        KeptPoints.Add(Points[KeptIndex]);
+    }
+
+    return FPolyline2D(MoveTemp(KeptPoints), bIsClosed);
+}

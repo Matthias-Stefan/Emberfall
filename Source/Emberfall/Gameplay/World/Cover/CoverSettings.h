@@ -41,6 +41,10 @@ public:
     UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "0.0", Units = "cm"))
     float OutlineOffset = 80.0f;
 
+    /** @brief Largest corner shift of a grown footprint as a multiple of @c OutlineOffset, footprints with sharper corners are skipped. */
+    UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "1.0"))
+    float OutlineMiterLimit = 4.0f;
+
     /** @brief Distance to an edge below which a point counts as on the border of a footprint in cm. */
     UPROPERTY(Config, EditAnywhere, Category = "Outline", meta = (ClampMin = "0.0", Units = "cm"))
     float OutlineBorderTolerance = 0.1f;

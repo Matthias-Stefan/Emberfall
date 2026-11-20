@@ -106,6 +106,20 @@ public:
      */
     [[nodiscard]] FVector2D FindClosestPoint(const FVector2D& Point, double& OutDistanceAlong) const;
 
+    /**
+     * @brief Collects the indices of the points that survive the simplification.
+     * @param Tolerance is the maximum distance a dropped point may have from the simplified path in cm.
+     * @param OutIndices is filled with the indices of the kept points in ascending order, previous content is discarded.
+     */
+    void CollectSimplifiedIndices(double Tolerance, TArray<int32>& OutIndices) const;
+
+    /**
+     * @brief Removes points that deviate less than a tolerance from the simplified path.
+     * @param Tolerance is the maximum distance a dropped point may have from the simplified path in cm.
+     * @return Simplified polyline, same closed state, the first (and for open paths the last) point is kept.
+     */
+    [[nodiscard]] FPolyline2D Simplify(double Tolerance) const;
+    
 private:
     /**
      * @brief Computes the index of the following point, wrapping around at the end.

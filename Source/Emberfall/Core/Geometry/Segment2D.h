@@ -178,12 +178,31 @@ public:
     // Intersection
 
     /**
-     * @brief Computes the point where the lines through two segments intersect.
+     * @brief Computes where the line through this segment meets the line through another segment.
      * @param Other is the segment whose line is intersected.
-     * @param OutPoint is filled with the intersection point in cm.
+     * @param OutAlpha is filled with the crossing position along this segment, @c 0 at @c Start and @c 1 at @c End.
+     * @param OutOtherAlpha is filled with the crossing position along @c Other, @c 0 at its start and @c 1 at its end.
      * @return @c true if the lines intersect in one point, @c false if they are parallel.
      */
-    [[nodiscard]] bool IntersectLines(const FSegment2D& Other, FVector2D& OutPoint) const;
+    [[nodiscard]] bool IntersectLine(const FSegment2D& Other, double& OutAlpha, double& OutOtherAlpha) const;
+
+    /**
+     * @brief Tests whether this segment crosses another segment and computes where this segment is hit.
+     * @param Other is the segment to test against.
+     * @param OutAlpha is filled with the crossing position along this segment, @c 0 at @c Start and @c 1 at @c End.
+     * @return @c true if the segments cross, @c false if they are parallel or do not reach each other.
+     */
+    [[nodiscard]] bool IntersectSegment(const FSegment2D& Other, double& OutAlpha) const;
+
+    //~=============================================================================
+    // Splitting
+
+    /**
+     * @brief Cuts the segment into consecutive pieces at the given positions along it.
+     * @param Alphas is the list of split positions, @c 0 at @c Start and @c 1 at @c End, in any order, values outside of [0, 1] are clamped.
+     * @return Pieces from @c Start to @c End, pieces without length are left out.
+     */
+    [[nodiscard]] TArray<FSegment2D> SplitAtAlphas(const TArray<double>& Alphas) const;
 
 private:
     /** @brief First end point in cm. */
