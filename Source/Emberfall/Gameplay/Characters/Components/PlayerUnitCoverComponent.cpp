@@ -9,29 +9,34 @@
 
 UPlayerUnitCoverComponent::UPlayerUnitCoverComponent()
 {
-    PrimaryComponentTick.bCanEverTick = false;
+    PrimaryComponentTick.bCanEverTick = true;
+    PrimaryComponentTick.bStartWithTickEnabled = false;
+}
+
+void UPlayerUnitCoverComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+    FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    
+    switch (CoverState)
+    {
+        case ECoverState::Entering:
+            TickEntering(DeltaTime);
+            break;
+        default:
+            SetComponentTickEnabled(false);
+            break;
+    }
 }
 
 bool UPlayerUnitCoverComponent::TryEnterCover()
 {
-    if (bIsInCover)
+    if (CoverState == ECoverState::InCover || CoverState == ECoverState::Entering)
     {
         return true;
     }
-
-    const UWorld* World = GetWorld();
-    if (!World)
-    {
-        UE_LOG(LogCover, Error, TEXT("TryEnterCover failed: %s has no world."), *GetNameSafe(this));
-        return false;
-    }
     
-    const UCoverSubsystem* CoverSubsystem = World->GetSubsystem<UCoverSubsystem>();
-    if (!CoverSubsystem)
-    {
-        UE_LOG(LogCover, Error, TEXT("TryEnterCover failed: %s found no UCoverSubsystem in the world."), *GetNameSafe(this));
-        return false;
-    }
+    const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
     
     const AActor* Unit = GetOwner();
     if (!Unit)
@@ -39,8 +44,6 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
         UE_LOG(LogCover, Error, TEXT("TryEnterCover failed: %s has no owner."), *GetNameSafe(this));
         return false;
     }
-    
-    constexpr float Radius = 120.0f;
     
     const UCoverSettings& Settings = CoverSubsystem->GetSettings();
 
@@ -70,13 +73,69 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
         }
     }
     
-    int x = 5;
-    // Next step: dock the unit at BestHit->ClosestPoint and set bIsInCover.
+    // BestHit stays null only if no score was comparable, which must not happen with a non-empty hit list.
+    if (!BestHit)
+    {
+        UE_LOG(LogCover, Error, TEXT("TryEnterCover failed: %s found no best edge among %d hits."),
+            *GetNameSafe(this), EdgeHits.Num());
+        return false;
+    }
+
+    TargetEdgeHit = *BestHit;
+    CoverState = ECoverState::Entering;
+    SetComponentTickEnabled(true);
     
-    return false;
+    return true;
 }
 
 void UPlayerUnitCoverComponent::LeaveCover()
 {
-    bIsInCover = false;
+    CoverState = ECoverState::None;
+    SetComponentTickEnabled(false);
+}
+
+void UPlayerUnitCoverComponent::TickEntering(float DeltaTime)
+{
+    AActor* Unit = GetOwner();
+    const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
+    if (!Unit || !CoverSubsystem)
+    {
+        UE_LOG(LogCover, Error, TEXT("TickEntering failed: %s has no owner or subsystem."), *GetNameSafe(this));
+        LeaveCover();
+        return;
+    }
+    
+    const UCoverSettings& Settings = CoverSubsystem->GetSettings();
+
+    const FVector UnitLocation = Unit->GetActorLocation();
+    const FVector2D TargetPoint = TargetEdgeHit.ClosestPoint + TargetEdgeHit.OutwardNormal * Settings.EnterStandOffset;
+    const FVector TargetLocation(TargetPoint.X, TargetPoint.Y, UnitLocation.Z);
+    
+    const FVector NewLocation = FMath::VInterpConstantTo(UnitLocation, TargetLocation, DeltaTime, Settings.EnterVelocity);
+    Unit->SetActorLocation(NewLocation);
+    
+    if (NewLocation.Equals(TargetLocation, Settings.EnterArrivalTolerance))
+    {
+        CoverState = ECoverState::InCover;
+        SetComponentTickEnabled(false);
+    }
+}
+
+const UCoverSubsystem* UPlayerUnitCoverComponent::GetCoverSubsystem() const
+{
+    const UWorld* World = GetWorld();
+    if (!World)
+    {
+        UE_LOG(LogCover, Error, TEXT("%s has no world."), *GetNameSafe(this));
+        return nullptr;
+    }
+
+    const UCoverSubsystem* CoverSubsystem = World->GetSubsystem<UCoverSubsystem>();
+    if (!CoverSubsystem)
+    {
+        UE_LOG(LogCover, Error, TEXT("%s found no UCoverSubsystem in the world."), *GetNameSafe(this));
+        return nullptr;
+    }
+
+    return CoverSubsystem;
 }

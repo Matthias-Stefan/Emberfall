@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polygon-Schwerpunkt (Shoelace) – Stepper</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-neutral: #f1efe8;
+    --surface: #ffffff;
+    --text: #1b1b1a;
+    --text-secondary: #5f5e5a;
+    --border: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.35);
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1b1a;
+      --bg-neutral: #262624;
+      --surface: #2c2c2a;
+      --text: #f1efe8;
+      --text-secondary: #b4b2a9;
+      --border: rgba(255, 255, 255, 0.14);
+      --border-strong: rgba(255, 255, 255, 0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1.5rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 1rem; }
+  button {
+    font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: transparent;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--bg-neutral); }
+  button:active { transform: scale(0.98); }
+  input[type="range"] { flex: 1; min-width: 160px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+  #steplabel { font-size: 14px; min-width: 100px; text-align: right; }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--bg-neutral);
+    border-radius: 12px;
+    touch-action: none;
+  }
+  svg text { fill: var(--text-secondary); font-size: 12px; font-family: system-ui, sans-serif; }
+  .grid { stroke: var(--border); stroke-width: 0.5; }
+  .axis { stroke: var(--border-strong); stroke-width: 1; }
+  .outline { fill: none; stroke: var(--text); stroke-width: 2; }
+  .vertex { fill: var(--surface); stroke: var(--text); stroke-width: 1.5; cursor: grab; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0; font-size: 13px; color: var(--text-secondary); }
+  .legend i { display: inline-block; vertical-align: -1px; margin-right: 6px; }
+  #out {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    overflow-x: auto;
+  }
+  #out b { font-weight: 600; }
+  .muted { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Polygon-Schwerpunkt: Dreiecke vom Ursprung, gewichtet nach Fläche</h1>
+
+  <div class="row">
+    <button id="prev" aria-label="Vorherige Kante">&#9664;</button>
+    <input type="range" id="step" min="0" max="6" value="6" step="1">
+    <button id="next" aria-label="Nächste Kante">&#9654;</button>
+    <span id="steplabel"></span>
+  </div>
+
+  <svg id="cv" viewBox="0 0 680 340" role="img" aria-label="Polygon mit Dreiecken vom Ursprung">
+    <g id="layer"></g>
+  </svg>
+
+  <div class="legend">
+    <span><i style="width:12px;height:12px;background:#378ADD;opacity:.45"></i>Cross positiv</span>
+    <span><i style="width:12px;height:12px;background:#E24B4A;opacity:.45"></i>Cross negativ</span>
+    <span><i style="width:11px;height:11px;border-radius:50%;background:#1D9E75"></i>Schwerpunkt</span>
+    <span><i style="width:11px;height:11px;border-radius:50%;border:2px solid #BA7517"></i>Ecken-Mittel</span>
+    <span><i style="width:10px;height:10px;border:2px solid #7F77DD;transform:rotate(45deg);margin-right:7px"></i>Bounds-Mitte</span>
+  </div>
+
+  <div class="row">
+    <button id="pL">L-Form</button>
+    <button id="pR">Rechteck</button>
+    <button id="pT">Dreieck</button>
+    <button id="rev">Richtung umkehren</button>
+  </div>
+
+  <div id="out"></div>
+</main>
+
+<script>
+const SCALE = 10, ORIGIN_X = 70, ORIGIN_Y = 310;
+const presets = {
+  L: [[6, 3], [26, 3], [26, 10], [14, 10], [14, 18], [6, 18]],
+  R: [[8, 4], [28, 4], [28, 16], [8, 16]],
+  T: [[8, 4], [30, 6], [14, 20]]
+};
+let points = presets.L.map(p => ({ x: p[0], y: p[1] }));
+let step = points.length;
+let dragIndex = -1;
+
+const svg = document.getElementById('cv');
+const layer = document.getElementById('layer');
+const stepInput = document.getElementById('step');
+const stepLabel = document.getElementById('steplabel');
+const out = document.getElementById('out');
+
+const screenX = x => ORIGIN_X + x * SCALE;
+const screenY = y => ORIGIN_Y - y * SCALE;
+const fmt = n => String(Math.round(n * 100) / 100);
+const fmtPoint = p => '(' + fmt(p.x) + ', ' + fmt(p.y) + ')';
+const cross = (p, q) => p.x * q.y - q.x * p.y;
+
+function render() {
+  const count = points.length;
+  stepInput.max = count;
+  stepInput.value = step;
+  stepLabel.textContent = 'Kante ' + step + ' von ' + count;
+
+  let html = '';
+  for (let gx = 0; gx <= 60; gx += 5) {
+    html += '<line class="grid" x1="' + screenX(gx) + '" y1="0" x2="' + screenX(gx) + '" y2="340"/>';
+  }
+  for (let gy = 0; gy <= 30; gy += 5) {
+    html += '<line class="grid" x1="0" y1="' + screenY(gy) + '" x2="680" y2="' + screenY(gy) + '"/>';
+  }
+  html += '<line class="axis" x1="0" y1="' + ORIGIN_Y + '" x2="680" y2="' + ORIGIN_Y + '"/>';
+  html += '<line class="axis" x1="' + ORIGIN_X + '" y1="0" x2="' + ORIGIN_X + '" y2="340"/>';
+  html += '<text x="' + (ORIGIN_X + 6) + '" y="' + (ORIGIN_Y - 6) + '">Ursprung</text>';
+
+  let crossSum = 0;
+  const weightedSum = { x: 0, y: 0 };
+  for (let i = 0; i < step; i++) {
+    const p = points[i], q = points[(i + 1) % count], c = cross(p, q);
+    const color = c >= 0 ? '#378ADD' : '#E24B4A';
+    const isCurrent = i === step - 1;
+    html += '<polygon points="' + screenX(0) + ',' + screenY(0) + ' ' + screenX(p.x) + ',' + screenY(p.y) + ' ' +
+      screenX(q.x) + ',' + screenY(q.y) + '" fill="' + color + '" fill-opacity="' + (isCurrent ? 0.38 : 0.2) +
+      '" stroke="' + color + '" stroke-width="' + (isCurrent ? 1.5 : 0.5) + '"/>';
+    crossSum += c;
+    weightedSum.x += (p.x + q.x) * c;
+    weightedSum.y += (p.y + q.y) * c;
+  }
+
+  let path = 'M';
+  points.forEach((p, i) => { path += (i ? ' L' : '') + screenX(p.x) + ' ' + screenY(p.y); });
+  html += '<path class="outline" d="' + path + ' Z"/>';
+
+  if (step > 0) {
+    const p = points[step - 1], q = points[step % count];
+    html += '<line x1="' + screenX(p.x) + '" y1="' + screenY(p.y) + '" x2="' + screenX(q.x) + '" y2="' + screenY(q.y) +
+      '" stroke="#BA7517" stroke-width="4"/>';
+  }
+
+  points.forEach((p, i) => {
+    html += '<circle class="vertex" cx="' + screenX(p.x) + '" cy="' + screenY(p.y) + '" r="7"/>';
+    html += '<text x="' + (screenX(p.x) + 10) + '" y="' + (screenY(p.y) - 8) + '">P' + i + '</text>';
+  });
+
+  const average = {
+    x: points.reduce((sum, p) => sum + p.x, 0) / count,
+    y: points.reduce((sum, p) => sum + p.y, 0) / count
+  };
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const boundsCenter = {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2
+  };
+  html += '<circle cx="' + screenX(average.x) + '" cy="' + screenY(average.y) + '" r="6" fill="none" stroke="#BA7517" stroke-width="2.5"/>';
+  html += '<rect x="' + (screenX(boundsCenter.x) - 5) + '" y="' + (screenY(boundsCenter.y) - 5) +
+    '" width="10" height="10" fill="none" stroke="#7F77DD" stroke-width="2.5" transform="rotate(45 ' +
+    screenX(boundsCenter.x) + ' ' + screenY(boundsCenter.y) + ')"/>';
+
+  const area = crossSum / 2;
+  let centroid = null;
+  if (step === count && Math.abs(area) > 1e-6) {
+    centroid = { x: weightedSum.x / (6 * area), y: weightedSum.y / (6 * area) };
+    html += '<circle cx="' + screenX(centroid.x) + '" cy="' + screenY(centroid.y) +
+      '" r="7" fill="#1D9E75" stroke="var(--surface)" stroke-width="2"/>';
+  }
+  layer.innerHTML = html;
+
+  let text = '';
+  if (step === 0) {
+    text = 'Noch keine Kante gewählt. Schieb den Regler oder drück den Pfeil.';
+  } else {
+    const index = step - 1, p = points[index], q = points[step % count], c = cross(p, q);
+    const sign = c >= 0 ? 'positiv, blau' : 'negativ, rot';
+    text += 'Kante ' + index + ': P' + index + ' = ' + fmtPoint(p) + ' &rarr; P' + (step % count) + ' = ' + fmtPoint(q) + '<br>';
+    text += 'Cross = ' + fmt(p.x) + '&middot;' + fmt(q.y) + ' &minus; ' + fmt(q.x) + '&middot;' + fmt(p.y) +
+      ' = <b>' + fmt(c) + '</b> (' + sign + ')<br>';
+    text += 'Gewicht = (P+Q)&middot;Cross = (' + fmt(p.x + q.x) + ', ' + fmt(p.y + q.y) + ')&middot;' + fmt(c) +
+      ' = (' + fmt((p.x + q.x) * c) + ', ' + fmt((p.y + q.y) * c) + ')<br>';
+    text += '<span class="muted">Summe bisher: &Sigma;Cross = ' + fmt(crossSum) + ', &Sigma;Gewicht = (' +
+      fmt(weightedSum.x) + ', ' + fmt(weightedSum.y) + ')</span>';
+    if (step === count) {
+      text += '<br><br>Fläche A = &Sigma;Cross / 2 = ' + fmt(area) + (area < 0 ? ' (Uhrzeigersinn)' : '') + '<br>';
+      if (centroid) {
+        text += 'Schwerpunkt = &Sigma;Gewicht / (6&middot;A) = <b>' + fmtPoint(centroid) + '</b><br>';
+      } else {
+        text += 'Fläche ist ~0, kein Schwerpunkt über die Formel.<br>';
+      }
+      text += '<span class="muted">Ecken-Mittel = ' + fmtPoint(average) + ', Bounds-Mitte = ' + fmtPoint(boundsCenter) + '</span>';
+    }
+  }
+  out.innerHTML = text;
+}
+
+function toLocal(event) {
+  const svgPoint = svg.createSVGPoint();
+  svgPoint.x = event.clientX;
+  svgPoint.y = event.clientY;
+  const mapped = svgPoint.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: (mapped.x - ORIGIN_X) / SCALE, y: (ORIGIN_Y - mapped.y) / SCALE, screenX: mapped.x, screenY: mapped.y };
+}
+
+svg.addEventListener('pointerdown', event => {
+  const local = toLocal(event);
+  let best = -1, bestDistance = 20 * 20;
+  points.forEach((p, i) => {
+    const dx = screenX(p.x) - local.screenX, dy = screenY(p.y) - local.screenY;
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance) { bestDistance = distance; best = i; }
+  });
+  if (best >= 0) {
+    dragIndex = best;
+    svg.setPointerCapture(event.pointerId);
+  }
+});
+svg.addEventListener('pointermove', event => {
+  if (dragIndex < 0) return;
+  const local = toLocal(event);
+  points[dragIndex] = {
+    x: Math.max(0, Math.min(60, Math.round(local.x))),
+    y: Math.max(0, Math.min(29, Math.round(local.y)))
+  };
+  render();
+});
+svg.addEventListener('pointerup', () => { dragIndex = -1; });
+
+stepInput.addEventListener('input', () => { step = parseInt(stepInput.value, 10); render(); });
+document.getElementById('prev').addEventListener('click', () => { step = Math.max(0, step - 1); render(); });
+document.getElementById('next').addEventListener('click', () => { step = Math.min(points.length, step + 1); render(); });
+
+function load(key) {
+  points = presets[key].map(p => ({ x: p[0], y: p[1] }));
+  step = points.length;
+  render();
+}
+document.getElementById('pL').addEventListener('click', () => load('L'));
+document.getElementById('pR').addEventListener('click', () => load('R'));
+document.getElementById('pT').addEventListener('click', () => load('T'));
+document.getElementById('rev').addEventListener('click', () => { points.reverse(); render(); });
+
+render();
+</script>
+</body>
+</html>

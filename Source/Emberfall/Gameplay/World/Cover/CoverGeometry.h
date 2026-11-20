@@ -140,4 +140,60 @@ public:
      * @return Length in cm, @c 0 if fewer than two points are given.
      */
     static double PolylineLength2D(const TArray<FVector>& Points);
+    
+private:
+    /**
+     * @brief Steps one element forward in a ring, the last element is followed by the first.
+     * @param Index is the current index.
+     * @param Count is the number of elements in the ring.
+     * @return @c Index + 1, or @c 0 if @c Index is the last element.
+     */
+    static int32 NextIndex(int32 Index, int32 Count);
+
+    /**
+     * @brief Steps one element backward in a ring, the first element is preceded by the last.
+     * @param Index is the current index.
+     * @param Count is the number of elements in the ring.
+     * @return @c Index - 1, or @c Count - 1 if @c Index is the first element.
+     */
+    static int32 PreviousIndex(int32 Index, int32 Count);
+    
+    /**
+     * @brief Drops the Z component of a point.
+     * @param Point is the position to flatten.
+     * @return The point with @c Z set to @c 0, as needed by the 3D engine segment functions.
+     */
+    static FVector ToGround(const FVector& Point);
+    
+    /**
+     * @brief Computes the area of a closed polygon with a sign for its winding, ignoring Z.
+     * @param Points is the list of polygon corners in order, the last one connects back to the first.
+     * @return Area in cm², positive for counterclockwise winding, @c 0 if fewer than three points are given.
+     */
+    static double SignedArea2D(const TArray<FVector>& Points);
+    
+    /**
+     * @brief Computes on which side of a directed edge a point lies, as the 2D cross product.
+     * @param EdgeStart is the start point of the edge.
+     * @param EdgeEnd is the end point of the edge.
+     * @param Point is the position to test.
+     * @return Cross product in cm², positive if @c Point lies left of the edge, negative if right, @c 0 if on the line.
+     */
+    static double SideOfEdge2D(const FVector& EdgeStart, const FVector& EdgeEnd, const FVector& Point);
+    
+    /**
+     * @brief Computes the distance of a point to the infinite line through two points, with a sign for the side.
+     * @param Point is the position to measure from.
+     * @param LineStart is the first point on the line.
+     * @param LineEnd is the second point on the line.
+     * @return Distance in cm, positive if left of the line, negative if right, the unsigned distance to @c LineStart if both line points coincide.
+     */
+    static double SignedDistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd);
+    
+    /**
+     * @brief Computes the normal that points to the right of a direction.
+     * @param Direction is the normalized ground-plane direction.
+     * @return The normal rotated 90 degrees clockwise.
+     */
+    static FVector2D RightNormal2D(const FVector2D& Direction);
 };

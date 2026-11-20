@@ -17,12 +17,11 @@ bool FCoverGeometry::ContainsPoint2D(const TArray<FVector>& QuadCorners, const F
     for (int32 CornerIndex = 0; CornerIndex < QuadCorners.Num(); ++CornerIndex)
     {
         const FVector& Current = QuadCorners[CornerIndex];
-        const FVector& Next = QuadCorners[(CornerIndex + 1) % QuadCorners.Num()];
+        const FVector& Next = QuadCorners[NextIndex(CornerIndex, QuadCorners.Num())];
 
-        const double Cross = (Next.X - Current.X) * (Point.Y - Current.Y)
-                           - (Next.Y - Current.Y) * (Point.X - Current.X);
-        bHasPositiveSide |= Cross > 0.0;
-        bHasNegativeSide |= Cross < 0.0;
+        const double Side = SideOfEdge2D(Current, Next, Point);
+        bHasPositiveSide |= Side > 0.0;
+        bHasNegativeSide |= Side < 0.0;
     }
 
     // A point on an edge has Cross == 0 there and sets neither flag, so the border counts as inside.
@@ -43,21 +42,15 @@ bool FCoverGeometry::ContainsPointStrict2D(const TArray<FVector>& QuadCorners, c
     for (int32 CornerIndex = 0; CornerIndex < QuadCorners.Num(); ++CornerIndex)
     {
         const FVector& Current = QuadCorners[CornerIndex];
-        const FVector& Next = QuadCorners[(CornerIndex + 1) % QuadCorners.Num()];
-
-        const FVector2D EdgeDirection(Next.X - Current.X, Next.Y - Current.Y);
-        const double EdgeLength = EdgeDirection.Size();
+        const FVector& Next = QuadCorners[NextIndex(CornerIndex, QuadCorners.Num())];
 
         // A degenerate edge has no side, so the test cannot give a meaningful answer.
-        if (EdgeLength < UE_KINDA_SMALL_NUMBER)
+        if (FVector::Dist2D(Current, Next) < UE_KINDA_SMALL_NUMBER)
         {
             return false;
         }
 
-        // Cross product divided by the edge length is the signed distance of the point to the edge in cm.
-        const double SignedDistance = (EdgeDirection.X * (Point.Y - Current.Y)
-                                     - EdgeDirection.Y * (Point.X - Current.X)) / EdgeLength;
-
+        const double SignedDistance = SignedDistanceToLine2D(Point, Current, Next);
         if (FMath::Abs(SignedDistance) <= BorderTolerance)
         {
             return false;
@@ -73,6 +66,7 @@ bool FCoverGeometry::ContainsPointStrict2D(const TArray<FVector>& QuadCorners, c
             return false;
         }
     }
+    
     return true;
 }
 
@@ -83,11 +77,8 @@ bool FCoverGeometry::IsOnBorder2D(const TArray<FVector>& LoopCorners, const FVec
 
     for (int32 CornerIndex = 0; CornerIndex < LoopCorners.Num(); ++CornerIndex)
     {
-        const FVector& Current = LoopCorners[CornerIndex];
-        const FVector& Next = LoopCorners[(CornerIndex + 1) % LoopCorners.Num()];
-
-        const FVector FlatStart(Current.X, Current.Y, 0.0);
-        const FVector FlatEnd(Next.X, Next.Y, 0.0);
+        const FVector FlatStart = ToGround(LoopCorners[CornerIndex]);
+        const FVector FlatEnd = ToGround(LoopCorners[NextIndex(CornerIndex, LoopCorners.Num())]);
         if (FMath::PointDistToSegment(FlatPoint, FlatStart, FlatEnd) <= BorderTolerance)
         {
             return true;
@@ -115,17 +106,13 @@ double FCoverGeometry::DistanceSquared2D(const TArray<FVector>& FirstQuadCorners
     double BestDistanceSquared = TNumericLimits<double>::Max();
     for (int32 FirstIndex = 0; FirstIndex < FirstQuadCorners.Num(); ++FirstIndex)
     {
-        const FVector& FirstCurrent = FirstQuadCorners[FirstIndex];
-        const FVector& FirstNext = FirstQuadCorners[(FirstIndex + 1) % FirstQuadCorners.Num()];
-        const FVector FirstStart(FirstCurrent.X, FirstCurrent.Y, 0.0);
-        const FVector FirstEnd(FirstNext.X, FirstNext.Y, 0.0);
+        const FVector FirstStart = ToGround(FirstQuadCorners[FirstIndex]);
+        const FVector FirstEnd = ToGround(FirstQuadCorners[NextIndex(FirstIndex, FirstQuadCorners.Num())]);
 
         for (int32 SecondIndex = 0; SecondIndex < SecondQuadCorners.Num(); ++SecondIndex)
         {
-            const FVector& SecondCurrent = SecondQuadCorners[SecondIndex];
-            const FVector& SecondNext = SecondQuadCorners[(SecondIndex + 1) % SecondQuadCorners.Num()];
-            const FVector SecondStart(SecondCurrent.X, SecondCurrent.Y, 0.0);
-            const FVector SecondEnd(SecondNext.X, SecondNext.Y, 0.0);
+            const FVector SecondStart = ToGround(SecondQuadCorners[SecondIndex]);
+            const FVector SecondEnd = ToGround(SecondQuadCorners[NextIndex(SecondIndex, SecondQuadCorners.Num())]);
 
             FVector ClosestOnFirst;
             FVector ClosestOnSecond;
@@ -139,18 +126,7 @@ double FCoverGeometry::DistanceSquared2D(const TArray<FVector>& FirstQuadCorners
 
 double FCoverGeometry::DistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd)
 {
-    const FVector2D LineDirection(LineEnd.X - LineStart.X, LineEnd.Y - LineStart.Y);
-    const FVector2D ToPoint(Point.X - LineStart.X, Point.Y - LineStart.Y);
-
-    // Without a usable direction there is no line, the distance to the start point is the best answer.
-    const double LineLength = LineDirection.Size();
-    if (LineLength < UE_KINDA_SMALL_NUMBER)
-    {
-        return ToPoint.Size();
-    }
-
-    // The cross product is the area of the parallelogram, divided by the base it is the height.
-    return FMath::Abs(FVector2D::CrossProduct(LineDirection, ToPoint)) / LineLength;
+    return FMath::Abs(SignedDistanceToLine2D(Point, LineStart, LineEnd));
 }
 
 float FCoverGeometry::DistanceSquaredToFootprint2D(
@@ -174,7 +150,7 @@ float FCoverGeometry::DistanceSquaredToFootprint2D(
     for (int32 CornerIndex = 0; CornerIndex < Corners.Num(); ++CornerIndex)
     {
         const FVector& StartCorner = Corners[CornerIndex];
-        const FVector& EndCorner = Corners[(CornerIndex + 1) % Corners.Num()];
+        const FVector& EndCorner = Corners[NextIndex(CornerIndex, Corners.Num())];
 
         const FVector2D EdgeStart(StartCorner.X, StartCorner.Y);
         const FVector2D Edge = FVector2D(EndCorner.X, EndCorner.Y) - EdgeStart;
@@ -304,16 +280,8 @@ bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, 
     }
 
     // The right-hand edge normal below only points outward for positive area, so mirrored footprints get reversed.
-    double SignedArea = 0.0;
-    for (int32 CornerIndex = 0; CornerIndex < CornerCount; ++CornerIndex)
-    {
-        const FVector& Current = ConvexCorners[CornerIndex];
-        const FVector& Next = ConvexCorners[(CornerIndex + 1) % CornerCount];
-        SignedArea += Current.X * Next.Y - Next.X * Current.Y;
-    }
-
     TArray<FVector> OrderedCorners = ConvexCorners;
-    if (SignedArea < 0.0)
+    if (SignedArea2D(ConvexCorners) < 0.0)
     {
         Algo::Reverse(OrderedCorners);
     }
@@ -321,14 +289,14 @@ bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, 
     OutLoop.Reserve(CornerCount);
     for (int32 CornerIndex = 0; CornerIndex < CornerCount; ++CornerIndex)
     {
-        const FVector& Previous = OrderedCorners[(CornerIndex + CornerCount - 1) % CornerCount];
+        const FVector& Previous = OrderedCorners[PreviousIndex(CornerIndex, CornerCount)];
         const FVector& Current = OrderedCorners[CornerIndex];
-        const FVector& Next = OrderedCorners[(CornerIndex + 1) % CornerCount];
+        const FVector& Next = OrderedCorners[NextIndex(CornerIndex, CornerCount)];
 
-        const FVector2D IncomingDirection = FVector2D(Current.X - Previous.X, Current.Y - Previous.Y).GetSafeNormal();
-        const FVector2D OutgoingDirection = FVector2D(Next.X - Current.X, Next.Y - Current.Y).GetSafeNormal();
-        const FVector2D IncomingNormal(IncomingDirection.Y, -IncomingDirection.X);
-        const FVector2D OutgoingNormal(OutgoingDirection.Y, -OutgoingDirection.X);
+        const FVector2D IncomingDirection = FVector2D(Current - Previous).GetSafeNormal();
+        const FVector2D OutgoingDirection = FVector2D(Next - Current).GetSafeNormal();
+        const FVector2D IncomingNormal = RightNormal2D(IncomingDirection);
+        const FVector2D OutgoingNormal = RightNormal2D(OutgoingDirection);
 
         // Both edges move by Offset, the new corner lies where the moved edges meet.
         const double MiterDenominator = 1.0 + FVector2D::DotProduct(IncomingNormal, OutgoingNormal);
@@ -346,21 +314,7 @@ bool FCoverGeometry::BuildOffsetPolygon2D(const TArray<FVector>& ConvexCorners, 
 
 double FCoverGeometry::Area2D(const TArray<FVector>& Points)
 {
-    if (Points.Num() < 3)
-    {
-        return 0.0;
-    }
-
-    // Shoelace formula: the sum is twice the signed area, the sign only tells the winding.
-    double DoubleSignedArea = 0.0;
-    for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
-    {
-        const FVector& Current = Points[PointIndex];
-        const FVector& Next = Points[(PointIndex + 1) % Points.Num()];
-        DoubleSignedArea += Current.X * Next.Y - Next.X * Current.Y;
-    }
-
-    return FMath::Abs(DoubleSignedArea) * 0.5;
+    return FMath::Abs(SignedArea2D(Points));
 }
 
 void FCoverGeometry::SimplifyPolyline2D(const TArray<FVector>& Points, double Tolerance, TArray<FVector>& OutPoints)
@@ -425,4 +379,65 @@ double FCoverGeometry::PolylineLength2D(const TArray<FVector>& Points)
         Length += FVector::Dist2D(Points[PointIndex], Points[PointIndex + 1]);
     }
     return Length;
+}
+
+//~=============================================================================
+// private
+
+int32 FCoverGeometry::NextIndex(int32 Index, int32 Count)
+{
+    return Index + 1 == Count ? 0 : Index + 1;
+}
+
+int32 FCoverGeometry::PreviousIndex(int32 Index, int32 Count)
+{
+    return Index == 0 ? Count - 1 : Index - 1;
+}
+
+FVector FCoverGeometry::ToGround(const FVector& Point)
+{
+    return FVector(Point.X, Point.Y, 0.0);
+}
+
+double FCoverGeometry::SignedArea2D(const TArray<FVector>& Points)
+{
+    if (Points.Num() < 3)
+    {
+        return 0.0;
+    }
+
+    // Shoelace formula: the sum is twice the signed area, positive for counterclockwise winding.
+    double DoubleSignedArea = 0.0;
+    for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+    {
+        const FVector& Current = Points[PointIndex];
+        const FVector& Next = Points[NextIndex(PointIndex, Points.Num())];
+        DoubleSignedArea += Current.X * Next.Y - Next.X * Current.Y;
+    }
+
+    return DoubleSignedArea * 0.5;
+}
+
+double FCoverGeometry::SideOfEdge2D(const FVector& EdgeStart, const FVector& EdgeEnd, const FVector& Point)
+{
+    return (EdgeEnd.X - EdgeStart.X) * (Point.Y - EdgeStart.Y) - (EdgeEnd.Y - EdgeStart.Y) * (Point.X - EdgeStart.X);
+}
+
+double FCoverGeometry::SignedDistanceToLine2D(const FVector& Point, const FVector& LineStart, const FVector& LineEnd)
+{
+    const double LineLength = FVector::Dist2D(LineStart, LineEnd);
+
+    // Without a usable direction there is no line, the distance to the start point is the best answer.
+    if (LineLength < UE_KINDA_SMALL_NUMBER)
+    {
+        return FVector::Dist2D(Point, LineStart);
+    }
+
+    // The cross product is the area of the parallelogram, divided by the base it is the signed height.
+    return SideOfEdge2D(LineStart, LineEnd, Point) / LineLength;
+}
+
+FVector2D FCoverGeometry::RightNormal2D(const FVector2D& Direction)
+{
+    return FVector2D(Direction.Y, -Direction.X);
 }

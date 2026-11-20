@@ -9,6 +9,26 @@ class ACoverObject;
 
 
 /**
+ * @brief Phases of a unit entering, holding and leaving cover.
+ */
+UENUM()
+enum class ECoverState : uint8
+{
+    /** @brief The unit is not in cover. */
+    None,
+
+    /** @brief The unit turns and moves to the cover edge, the animation plays. */
+    Entering,
+
+    /** @brief The unit stands at the cover edge and moves along the path. */
+    InCover,
+
+    /** @brief The unit leaves the cover, the animation plays. */
+    Leaving
+};
+
+
+/**
  * @brief Sides of a cover object in its local space, combined as bit flags.
  */
 UENUM(meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
@@ -85,7 +105,7 @@ struct FCoverGrownFootprint
 struct FCoverEdgeHit
 {
     /** @brief Cover object that owns the edge. */
-    ACoverObject* CoverObject = nullptr;
+    TWeakObjectPtr<ACoverObject> CoverObject = nullptr;
 
     /** @brief Index of the edge in the footprint corner list, the edge runs from this corner to the next. */
     int32 EdgeIndex = INDEX_NONE;
