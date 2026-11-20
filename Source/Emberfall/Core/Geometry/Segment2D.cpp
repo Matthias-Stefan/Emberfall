@@ -34,15 +34,17 @@ bool FSegment2D::IntersectSegment(const FSegment2D& Other, double& OutAlpha) con
         return false;
     }
 
-    // The lines meet, but the point must also lie on both real segments.
-    const bool bHitsThis = Alpha >= 0.0 && Alpha <= 1.0;
-    const bool bHitsOther = OtherAlpha >= 0.0 && OtherAlpha <= 1.0;
+    // The lines meet, but the point must also lie on both real segments. The little slack makes segments that
+    // touch at an end point count, without it floating point noise misses such T junctions at random.
+    const double Slack = UE_KINDA_SMALL_NUMBER;
+    const bool bHitsThis = Alpha >= -Slack && Alpha <= 1.0 + Slack;
+    const bool bHitsOther = OtherAlpha >= -Slack && OtherAlpha <= 1.0 + Slack;
     if (!bHitsThis || !bHitsOther)
     {
         return false;
     }
 
-    OutAlpha = Alpha;
+    OutAlpha = FMath::Clamp(Alpha, 0.0, 1.0);
     return true;
 }
 

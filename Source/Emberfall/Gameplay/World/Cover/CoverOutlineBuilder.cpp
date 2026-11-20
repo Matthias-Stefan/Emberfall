@@ -29,6 +29,25 @@ void FCoverOutlineBuilder::Build(const FCoverGroup& Group, TArray<FCoverLoop>& O
     TArray<FCoverLoop> ChainedLoops;
     ChainPieces(OuterPieces, ChainedLoops);
 
+#if ENABLE_DRAW_DEBUG
+    // TEMP: raw data of the outline pipeline, remove after the corner check.
+    UE_LOG(LogCover, Log, TEXT("outline: %d grown footprints, %d outer pieces, %d chains"),
+           GrownFootprints.Num(), OuterPieces.Num(), ChainedLoops.Num());
+    for (const FCoverEdgePiece& Piece : OuterPieces)
+    {
+        UE_LOG(LogCover, Log, TEXT("  piece from footprint %d: (%.2f, %.2f) -> (%.2f, %.2f)"),
+               Piece.SourceIndex, Piece.Start.X, Piece.Start.Y, Piece.End.X, Piece.End.Y);
+    }
+    for (const FCoverLoop& ChainedLoop : ChainedLoops)
+    {
+        UE_LOG(LogCover, Log, TEXT("  chain closed=%d, %d raw points"), ChainedLoop.bIsClosed, ChainedLoop.Points.Num());
+        for (const FVector& Point : ChainedLoop.Points)
+        {
+            UE_LOG(LogCover, Log, TEXT("    (%.2f, %.2f)"), Point.X, Point.Y);
+        }
+    }
+#endif
+
     OutLoops.Reset(ChainedLoops.Num());
     for (const FCoverLoop& ChainedLoop : ChainedLoops)
     {
@@ -266,6 +285,13 @@ void FCoverOutlineBuilder::BuildGrownFootprints(const FCoverGroup& Group,
         UE_LOG(LogCover, Log, TEXT("footprint %d: sides %d, axis X (%.2f, %.2f), axis Y (%.2f, %.2f)"),
             OutFootprints.Num(), static_cast<int32>(Footprint.EnabledSides),
             Footprint.AxisX.X, Footprint.AxisX.Y, Footprint.AxisY.X, Footprint.AxisY.Y);
+#if ENABLE_DRAW_DEBUG
+        // TEMP: corners of the grown footprint, remove after the corner check.
+        for (const FVector& GrownCorner : Footprint.Corners)
+        {
+            UE_LOG(LogCover, Log, TEXT("    corner (%.2f, %.2f)"), GrownCorner.X, GrownCorner.Y);
+        }
+#endif
         OutFootprints.Add(MoveTemp(Footprint));
     }
 }

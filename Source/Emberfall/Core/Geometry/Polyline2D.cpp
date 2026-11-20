@@ -168,6 +168,17 @@ void FPolyline2D::CollectSimplifiedIndices(double Tolerance, TArray<int32>& OutI
     {
         OutIndices.Pop();
     }
+
+    // A closed path has no real start. The first point is dropped as well if it only sits on a straight piece,
+    // otherwise it stays next to a corner as a stray extra point.
+    if (bIsClosed && OutIndices.Num() > 3)
+    {
+        const FSegment2D Neighbors(Points[OutIndices.Last()], Points[OutIndices[1]]);
+        if (FMath::Abs(Neighbors.SignedDistanceToLine(Points[0])) <= Tolerance)
+        {
+            OutIndices.RemoveAt(0);
+        }
+    }
 }
 
 FPolyline2D FPolyline2D::Simplify(double Tolerance) const

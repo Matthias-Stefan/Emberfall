@@ -190,7 +190,7 @@ public:
      * @brief Tests whether this segment crosses another segment and computes where this segment is hit.
      * @param Other is the segment to test against.
      * @param OutAlpha is filled with the crossing position along this segment, @c 0 at @c Start and @c 1 at @c End.
-     * @return @c true if the segments cross, @c false if they are parallel or do not reach each other.
+     * @return @c true if the segments cross or touch at an end point, @c false if they are parallel or do not reach each other.
      */
     [[nodiscard]] bool IntersectSegment(const FSegment2D& Other, double& OutAlpha) const;
 

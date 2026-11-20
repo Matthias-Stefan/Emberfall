@@ -107,7 +107,7 @@ public:
     [[nodiscard]] FVector2D FindClosestPoint(const FVector2D& Point, double& OutDistanceAlong) const;
 
     /**
-     * @brief Collects the indices of the points that survive the simplification.
+     * @brief Collects the indices of the points that survive the simplification, a redundant first point of a closed path is dropped too.
      * @param Tolerance is the maximum distance a dropped point may have from the simplified path in cm.
      * @param OutIndices is filled with the indices of the kept points in ascending order, previous content is discarded.
      */
