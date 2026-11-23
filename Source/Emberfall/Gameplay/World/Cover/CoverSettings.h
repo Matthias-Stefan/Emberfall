@@ -65,7 +65,7 @@ public:
     // Entry
 
     /** @brief Distance around a unit in which cover edges can be entered in cm. */
-    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0", Units = "cm"))
+    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "1.0", Units = "cm"))
     float EntrySearchRadius = 120.0f;
 
     /** @brief Weight of the normalized distance in the cover edge score, higher prefers closer edges. */

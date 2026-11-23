@@ -37,7 +37,7 @@ public:
     bool TryEnterCover();
 
     /**
-     * @brief Leaves the current cover and clears @c bIsInCover.
+     * @brief Leaves the current cover and resets @c CoverState to @c ECoverState::None.
      */
     void LeaveCover();
 

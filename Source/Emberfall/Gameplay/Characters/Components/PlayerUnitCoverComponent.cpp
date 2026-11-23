@@ -36,15 +36,20 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
         return true;
     }
     
-    const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
-    
     const AActor* Unit = GetOwner();
     if (!Unit)
     {
         UE_LOG(LogCover, Error, TEXT("TryEnterCover failed: %s has no owner."), *GetNameSafe(this));
         return false;
     }
-    
+
+    // GetCoverSubsystem logs the reason itself.
+    const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
+    if (!CoverSubsystem)
+    {
+        return false;
+    }
+
     const UCoverSettings& Settings = CoverSubsystem->GetSettings();
 
     TArray<FCoverEdgeHit> EdgeHits;
