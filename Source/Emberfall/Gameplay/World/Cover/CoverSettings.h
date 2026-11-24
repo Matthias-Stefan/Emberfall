@@ -90,7 +90,15 @@ public:
     /** @brief Speed at which a unit in cover walks along the cover path in cm/s. */
     UPROPERTY(Config, EditAnywhere, Category = "Movement", meta = (ClampMin = "0.0", Units = "cm/s"))
     float CoverMoveVelocity = 200.0f;
-    
+
+    /** @brief Speed at which a unit turns to the wall while entering and walking in cover in degrees per second. */
+    UPROPERTY(Config, EditAnywhere, Category = "Movement", meta = (ClampMin = "1.0"))
+    float CoverTurnVelocity = 360.0f;
+
+    /** @brief Yaw added to the facing away from the wall in degrees, tunes the facing to the cover animation. */
+    UPROPERTY(Config, EditAnywhere, Category = "Movement", meta = (Units = "deg"))
+    float CoverFacingYawOffset = 0.0f;
+
     //~=============================================================================
     // Debug
 

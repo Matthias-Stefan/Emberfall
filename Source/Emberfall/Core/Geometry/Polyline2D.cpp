@@ -18,6 +18,23 @@ double FPolyline2D::GetLength() const
     return Length;
 }
 
+double FPolyline2D::ToPathDistance(double Distance, double TotalLength) const
+{
+    // Open paths stop at the ends, closed paths wrap around.
+    if (!bIsClosed)
+    {
+        return FMath::Clamp(Distance, 0.0, TotalLength);
+    }
+
+    double Wrapped = FMath::Fmod(Distance, TotalLength);
+    if (Wrapped < 0.0)
+    {
+        Wrapped += TotalLength;
+    }
+
+    return Wrapped;
+}
+
 FVector2D FPolyline2D::GetPointAtDistance(double Distance) const
 {
     if (GetSegmentNum() == 0)
@@ -31,22 +48,8 @@ FVector2D FPolyline2D::GetPointAtDistance(double Distance) const
         return Points[0];
     }
     
-    // Open paths stop at the ends, closed paths wrap around.
-    double Remaining = Distance;
-    if (bIsClosed)
-    {
-        Remaining = FMath::Fmod(Distance, TotalLength);
-        if (Remaining < 0.0)
-        {
-            Remaining += TotalLength;
-        }
-    }
-    else
-    {
-        Remaining = FMath::Clamp(Distance, 0.0, TotalLength);
-    }
-    
     // Walk the segments, subtracting each length until the rest fits into one.
+    double Remaining = ToPathDistance(Distance, TotalLength);
     for (int32 Index = 0; Index < GetSegmentNum(); ++Index)
     {
         const FSegment2D Segment = GetSegment(Index);
@@ -64,6 +67,37 @@ FVector2D FPolyline2D::GetPointAtDistance(double Distance) const
     // Rounding drift can leave a tiny rest after the last segment.
     const FVector2D EndPoint = GetSegment(GetSegmentNum() - 1).GetEnd();
     return EndPoint;
+}
+
+FSegment2D FPolyline2D::GetSegmentAtDistance(double Distance) const
+{
+    if (GetSegmentNum() == 0)
+    {
+        return FSegment2D::Invalid;
+    }
+
+    const double TotalLength = GetLength();
+    if (FMath::IsNearlyZero(TotalLength))
+    {
+        return GetSegment(0);
+    }
+
+    // A distance that falls exactly on a point belongs to the segment that starts there.
+    double Remaining = ToPathDistance(Distance, TotalLength);
+    for (int32 Index = 0; Index < GetSegmentNum(); ++Index)
+    {
+        const FSegment2D Segment = GetSegment(Index);
+        const double SegmentLength = Segment.GetLength();
+        if (SegmentLength > 0.0 && Remaining < SegmentLength)
+        {
+            return Segment;
+        }
+
+        Remaining -= SegmentLength;
+    }
+
+    // The end of an open path and rounding drift end up here.
+    return GetSegment(GetSegmentNum() - 1);
 }
 
 FVector2D FPolyline2D::FindClosestPoint(const FVector2D& Point, double& OutDistanceAlong) const

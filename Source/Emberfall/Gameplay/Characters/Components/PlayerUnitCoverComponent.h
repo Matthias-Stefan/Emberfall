@@ -11,6 +11,7 @@
 #include "PlayerUnitCoverComponent.generated.h"
 
 
+class UCoverSettings;
 class UCoverSubsystem;
 /**
  * @brief Manages the cover state of an @c APlayerUnit.
@@ -63,11 +64,18 @@ public:
      */
     UFUNCTION(BlueprintPure, Category = "Cover")
     bool IsEntering() const { return CoverState == ECoverState::Entering; }
+
+    /**
+     * @brief Tests whether the cover animation has to be mirrored for the side the unit walked to last.
+     * @return @c true after walking counterclockwise seen from the wall's outside, otherwise @c false, stays until the unit walks the other way.
+     */
+    UFUNCTION(BlueprintPure, Category = "Cover")
+    bool ShouldMirrorCover() const { return bMirrorCover; }
     
     
 private:
     /**
-     * @brief Moves the unit toward the target cover edge and switches to @c ECoverState::InCover on arrival.
+     * @brief Moves the unit to the cover path, turns it to the wall and switches to @c ECoverState::InCover on arrival.
      * @param DeltaTime is the time since the last tick in seconds.
      */
     void TickEntering(float DeltaTime);
@@ -77,6 +85,22 @@ private:
      * @param DeltaTime is the time since the last tick in seconds.
      */
     void TickInCover(float DeltaTime);
+
+    /**
+     * @brief Computes the direction pointing away from the wall at a position on the cover path.
+     * @param Distance is the distance along @c CoverPath in cm.
+     * @return Unit direction in the ground plane, @c ZeroVector if the path has no segment.
+     */
+    FVector2D GetOutwardDirectionAtDistance(double Distance) const;
+
+    /**
+     * @brief Turns a unit one step toward facing away from the wall at its position on the path.
+     * @param Unit is the unit that is turned.
+     * @param DeltaTime is the time since the last tick in seconds.
+     * @param Settings is the cover settings that hold the turn velocity and the yaw offset.
+     * @return @c true if the unit reached its target rotation, otherwise @c false.
+     */
+    bool TurnToCover(AActor& Unit, float DeltaTime, const UCoverSettings& Settings) const;
 
     /**
      * @brief Finds the cover subsystem of the world this component lives in.
@@ -101,4 +125,10 @@ private:
 
     /** @brief Position along @c CoverPath in cm that the unit walks to while in cover. */
     double TargetDistanceAlongPath = 0.0;
+
+    /** @brief Whether the right normal of the path segments points away from the wall, the same for the whole path. */
+    bool bOutwardIsRightNormal = false;
+
+    /** @brief Whether the cover animation is mirrored, set by the last walking direction and kept while the unit stands. */
+    bool bMirrorCover = false;
 };

@@ -109,6 +109,13 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
     static_cast<void>(CoverPath.FindClosestPoint(FVector2D(Unit->GetActorLocation()), DistanceAlongPath));
     TargetDistanceAlongPath = DistanceAlongPath;
 
+    // The picked edge tells which side of the path is away from the wall. The segment next to the expected point
+    // runs parallel to that edge, so its normal can be compared with the edge's outward normal once for the whole path.
+    double ReferenceDistance = 0.0;
+    static_cast<void>(CoverPath.FindClosestPoint(ExpectedPathPoint, ReferenceDistance));
+    const FSegment2D ReferenceSegment = CoverPath.GetSegmentAtDistance(ReferenceDistance);
+    bOutwardIsRightNormal = FVector2D::DotProduct(ReferenceSegment.GetRightNormal(), BestHit->OutwardNormal) >= 0.0;
+
     // A running AI move would fight the cover movement.
     if (const APawn* Pawn = Cast<APawn>(Unit))
     {
@@ -166,8 +173,9 @@ void UPlayerUnitCoverComponent::TickEntering(float DeltaTime)
     
     const FVector NewLocation = FMath::VInterpConstantTo(UnitLocation, TargetLocation, DeltaTime, Settings.EnterVelocity);
     Unit->SetActorLocation(NewLocation);
-    
-    if (NewLocation.Equals(TargetLocation, Settings.EnterArrivalTolerance))
+
+    const bool bTurned = TurnToCover(*Unit, DeltaTime, Settings);
+    if (bTurned && NewLocation.Equals(TargetLocation, Settings.EnterArrivalTolerance))
     {
         CoverState = ECoverState::InCover;
         SetComponentTickEnabled(false);
@@ -203,11 +211,21 @@ void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
         }
     }
 
+    // The side the unit walks to decides the mirroring, seen from the wall's outside. It is kept while the unit stands.
+    if (!FMath::IsNearlyZero(Remaining))
+    {
+        const FVector2D PathDirection = CoverPath.GetSegmentAtDistance(DistanceAlongPath).GetDirection().GetSafeNormal();
+        const FVector2D WalkDirection = PathDirection * FMath::Sign(Remaining);
+        const FVector2D OutwardDirection = GetOutwardDirectionAtDistance(DistanceAlongPath);
+        bMirrorCover = FVector2D::CrossProduct(OutwardDirection, WalkDirection) > 0.0;
+    }
+
     const double MaxStep = Settings.CoverMoveVelocity * DeltaTime;
+    bool bArrived = false;
     if (FMath::Abs(Remaining) <= MaxStep)
     {
         DistanceAlongPath = TargetDistanceAlongPath;
-        SetComponentTickEnabled(false);
+        bArrived = true;
     }
     else
     {
@@ -225,6 +243,45 @@ void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
 
     const FVector2D PathPoint = CoverPath.GetPointAtDistance(DistanceAlongPath);
     Unit->SetActorLocation(FVector(PathPoint.X, PathPoint.Y, Unit->GetActorLocation().Z));
+
+    // The tick stays on until the unit has also finished turning.
+    const bool bTurned = TurnToCover(*Unit, DeltaTime, Settings);
+    if (bArrived && bTurned)
+    {
+        SetComponentTickEnabled(false);
+    }
+}
+
+FVector2D UPlayerUnitCoverComponent::GetOutwardDirectionAtDistance(double Distance) const
+{
+    const FSegment2D Segment = CoverPath.GetSegmentAtDistance(Distance);
+    if (!Segment.IsValid())
+    {
+        return FVector2D::ZeroVector;
+    }
+
+    const FVector2D RightNormal = Segment.GetRightNormal();
+    return bOutwardIsRightNormal ? RightNormal : -RightNormal;
+}
+
+bool UPlayerUnitCoverComponent::TurnToCover(AActor& Unit, float DeltaTime, const UCoverSettings& Settings) const
+{
+    const FVector2D OutwardDirection = GetOutwardDirectionAtDistance(DistanceAlongPath);
+    if (OutwardDirection.IsNearlyZero())
+    {
+        // Degenerate path segment, keep the current rotation.
+        return true;
+    }
+
+    // Facing away from the wall, the yaw offset adapts this to the cover animation.
+    const double TargetYaw = FMath::RadiansToDegrees(FMath::Atan2(OutwardDirection.Y, OutwardDirection.X))
+                           + Settings.CoverFacingYawOffset;
+    const FRotator TargetRotation(0.0, TargetYaw, 0.0);
+    const FRotator NewRotation = FMath::RInterpConstantTo(Unit.GetActorRotation(), TargetRotation, DeltaTime,
+        Settings.CoverTurnVelocity);
+    Unit.SetActorRotation(NewRotation);
+
+    return NewRotation.Equals(TargetRotation, 0.1f);
 }
 
 const UCoverSubsystem* UPlayerUnitCoverComponent::GetCoverSubsystem() const

@@ -99,6 +99,13 @@ public:
     [[nodiscard]] FVector2D GetPointAtDistance(double Distance) const;
 
     /**
+     * @brief Gets the segment that contains the point at a distance along the path, measured from the first point.
+     * @param Distance is the distance along the path in cm.
+     * @return Segment in cm, the one that starts there if the distance falls on a point, clamped to the ends if open, wrapped around if closed, @c FSegment2D::Invalid if the polyline has no segment.
+     */
+    [[nodiscard]] FSegment2D GetSegmentAtDistance(double Distance) const;
+
+    /**
      * @brief Finds the point on the path that is closest to a position.
      * @param Point is the position to measure from.
      * @param OutDistanceAlong is filled with the distance of the found point along the path in cm, measured from the first point.
@@ -121,6 +128,14 @@ public:
     [[nodiscard]] FPolyline2D Simplify(double Tolerance) const;
     
 private:
+    /**
+     * @brief Brings a distance onto the path, clamped to the ends if open, wrapped around if closed.
+     * @param Distance is the distance along the path in cm.
+     * @param TotalLength is the length of the whole path in cm.
+     * @return Distance in cm between @c 0 and @p TotalLength.
+     */
+    [[nodiscard]] double ToPathDistance(double Distance, double TotalLength) const;
+
     /**
      * @brief Computes the index of the following point, wrapping around at the end.
      * @param Index is the index of the current point.
