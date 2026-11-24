@@ -80,13 +80,16 @@ public:
     UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0", Units = "cm/s"))
     float EnterVelocity = 300.0f;
 
-    /** @brief Distance the unit keeps from the cover edge, measured along the outward normal in cm. */
-    UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0", Units = "cm"))
-    float EnterStandOffset = 50.0f;
-
     /** @brief Distance to the target below which the unit counts as arrived in cm. */
     UPROPERTY(Config, EditAnywhere, Category = "Entry", meta = (ClampMin = "0.0", Units = "cm"))
     float EnterArrivalTolerance = 5.0f;
+
+    //~=============================================================================
+    // Movement
+
+    /** @brief Speed at which a unit in cover walks along the cover path in cm/s. */
+    UPROPERTY(Config, EditAnywhere, Category = "Movement", meta = (ClampMin = "0.0", Units = "cm/s"))
+    float CoverMoveVelocity = 200.0f;
     
     //~=============================================================================
     // Debug

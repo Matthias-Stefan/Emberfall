@@ -6,6 +6,9 @@
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
+
 
 UPlayerUnitCoverComponent::UPlayerUnitCoverComponent()
 {
@@ -22,6 +25,9 @@ void UPlayerUnitCoverComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     {
         case ECoverState::Entering:
             TickEntering(DeltaTime);
+            break;
+        case ECoverState::InCover:
+            TickInCover(DeltaTime);
             break;
         default:
             SetComponentTickEnabled(false);
@@ -86,7 +92,32 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
         return false;
     }
 
-    TargetEdgeHit = *BestHit;
+    // The unit walks on the outline loop of the wall's group, so entering and walking along the wall share one line.
+    // The loop is chosen by the point it should have next to the picked edge, not by the unit position.
+    const FVector2D ExpectedPathPoint = BestHit->ClosestPoint + BestHit->OutwardNormal * Settings.OutlineOffset;
+    FPolyline2D Path = FPolyline2D::Invalid;
+    if (!CoverSubsystem->FindCoverPath(BestHit->CoverObject.Get(), ExpectedPathPoint, Path))
+    {
+        UE_LOG(LogCover, Warning, TEXT("TryEnterCover: %s found no cover path for the edge of %s."),
+            *GetNameSafe(Unit), *GetNameSafe(BestHit->CoverObject.Get()));
+        return false;
+    }
+
+    CoverPath = MoveTemp(Path);
+    CoverPathLength = CoverPath.GetLength();
+    // Only the distance along the path is needed, the point itself is recomputed from it every tick.
+    static_cast<void>(CoverPath.FindClosestPoint(FVector2D(Unit->GetActorLocation()), DistanceAlongPath));
+    TargetDistanceAlongPath = DistanceAlongPath;
+
+    // A running AI move would fight the cover movement.
+    if (const APawn* Pawn = Cast<APawn>(Unit))
+    {
+        if (AController* Controller = Pawn->GetController())
+        {
+            Controller->StopMovement();
+        }
+    }
+
     CoverState = ECoverState::Entering;
     SetComponentTickEnabled(true);
     
@@ -96,16 +127,33 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
 void UPlayerUnitCoverComponent::LeaveCover()
 {
     CoverState = ECoverState::None;
+    CoverPath = FPolyline2D::Invalid;
+    CoverPathLength = 0.0;
+    DistanceAlongPath = 0.0;
+    TargetDistanceAlongPath = 0.0;
     SetComponentTickEnabled(false);
+}
+
+bool UPlayerUnitCoverComponent::MoveAlongCover(const FVector& WorldTarget)
+{
+    if (CoverState != ECoverState::InCover || !CoverPath.IsValid())
+    {
+        return false;
+    }
+
+    // Clicks beside the line land on the closest point of the path.
+    static_cast<void>(CoverPath.FindClosestPoint(FVector2D(WorldTarget.X, WorldTarget.Y), TargetDistanceAlongPath));
+    SetComponentTickEnabled(true);
+    return true;
 }
 
 void UPlayerUnitCoverComponent::TickEntering(float DeltaTime)
 {
     AActor* Unit = GetOwner();
     const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
-    if (!Unit || !CoverSubsystem)
+    if (!Unit || !CoverSubsystem || !CoverPath.IsValid())
     {
-        UE_LOG(LogCover, Error, TEXT("TickEntering failed: %s has no owner or subsystem."), *GetNameSafe(this));
+        UE_LOG(LogCover, Error, TEXT("TickEntering failed: %s has no owner, subsystem or path."), *GetNameSafe(this));
         LeaveCover();
         return;
     }
@@ -113,7 +161,7 @@ void UPlayerUnitCoverComponent::TickEntering(float DeltaTime)
     const UCoverSettings& Settings = CoverSubsystem->GetSettings();
 
     const FVector UnitLocation = Unit->GetActorLocation();
-    const FVector2D TargetPoint = TargetEdgeHit.ClosestPoint + TargetEdgeHit.OutwardNormal * Settings.EnterStandOffset;
+    const FVector2D TargetPoint = CoverPath.GetPointAtDistance(DistanceAlongPath);
     const FVector TargetLocation(TargetPoint.X, TargetPoint.Y, UnitLocation.Z);
     
     const FVector NewLocation = FMath::VInterpConstantTo(UnitLocation, TargetLocation, DeltaTime, Settings.EnterVelocity);
@@ -124,6 +172,59 @@ void UPlayerUnitCoverComponent::TickEntering(float DeltaTime)
         CoverState = ECoverState::InCover;
         SetComponentTickEnabled(false);
     }
+}
+
+void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
+{
+    AActor* Unit = GetOwner();
+    const UCoverSubsystem* CoverSubsystem = GetCoverSubsystem();
+    if (!Unit || !CoverSubsystem || !CoverPath.IsValid())
+    {
+        UE_LOG(LogCover, Error, TEXT("TickInCover failed: %s has no owner, subsystem or path."), *GetNameSafe(this));
+        LeaveCover();
+        return;
+    }
+
+    const UCoverSettings& Settings = CoverSubsystem->GetSettings();
+
+    // Signed distance still to walk, positive runs toward the end of the path.
+    double Remaining = TargetDistanceAlongPath - DistanceAlongPath;
+    if (CoverPath.IsClosed() && CoverPathLength > 0.0)
+    {
+        // A closed path has two ways to the target, take the shorter one.
+        Remaining = FMath::Fmod(Remaining, CoverPathLength);
+        if (Remaining > CoverPathLength * 0.5)
+        {
+            Remaining -= CoverPathLength;
+        }
+        else if (Remaining < -CoverPathLength * 0.5)
+        {
+            Remaining += CoverPathLength;
+        }
+    }
+
+    const double MaxStep = Settings.CoverMoveVelocity * DeltaTime;
+    if (FMath::Abs(Remaining) <= MaxStep)
+    {
+        DistanceAlongPath = TargetDistanceAlongPath;
+        SetComponentTickEnabled(false);
+    }
+    else
+    {
+        DistanceAlongPath += FMath::Sign(Remaining) * MaxStep;
+    }
+
+    if (CoverPath.IsClosed() && CoverPathLength > 0.0)
+    {
+        DistanceAlongPath = FMath::Fmod(DistanceAlongPath, CoverPathLength);
+        if (DistanceAlongPath < 0.0)
+        {
+            DistanceAlongPath += CoverPathLength;
+        }
+    }
+
+    const FVector2D PathPoint = CoverPath.GetPointAtDistance(DistanceAlongPath);
+    Unit->SetActorLocation(FVector(PathPoint.X, PathPoint.Y, Unit->GetActorLocation().Z));
 }
 
 const UCoverSubsystem* UPlayerUnitCoverComponent::GetCoverSubsystem() const

@@ -21,6 +21,19 @@ APlayerUnit::APlayerUnit()
 
 void APlayerUnit::MoveToTarget(const FVector& Target)
 {
+    // In cover the target is projected onto the cover path, the navmesh is skipped.
+    if (CoverComponent->IsInCover())
+    {
+        CoverComponent->MoveAlongCover(Target);
+        return;
+    }
+
+    // A new order cancels a cover entry that is still running.
+    if (CoverComponent->IsEntering())
+    {
+        CoverComponent->LeaveCover();
+    }
+
     APlayerUnitAIController* AIController = Cast<APlayerUnitAIController>(GetController());
     if (AIController == nullptr)
     {

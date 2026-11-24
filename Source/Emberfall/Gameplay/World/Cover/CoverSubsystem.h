@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 
+#include "Emberfall/Core/Geometry/Polyline2D.h"
 #include "Emberfall/Gameplay/World/Cover/CoverGroup.h"
 #include "Emberfall/Gameplay/World/Cover/CoverObject.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSpatialGrid.h"
@@ -92,6 +93,15 @@ public:
      * @return @c true if an enabled edge was found, otherwise @c false.
      */
     bool FindNearestCoverEdge(const FVector& Position, float MaxDistance, FCoverEdgeHit& OutHit) const;
+
+    /**
+     * @brief Finds the outline path a cover object belongs to, the loop of its group that lies closest to a position.
+     * @param CoverObject is the cover object whose group is searched.
+     * @param Position is the point the loop is chosen by in the ground plane in cm.
+     * @param OutPath is filled with the chosen loop as a polyline in the ground plane.
+     * @return @c true if the group has a loop and @c OutPath was filled, otherwise @c false.
+     */
+    bool FindCoverPath(const ACoverObject* CoverObject, const FVector2D& Position, FPolyline2D& OutPath) const;
 
     /**
      * @brief Rebuilds all groups from the registered cover objects.

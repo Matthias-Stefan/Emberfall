@@ -231,6 +231,44 @@ bool UCoverSubsystem::FindNearestCoverEdge(const FVector& Position, float MaxDis
     return true;
 }
 
+bool UCoverSubsystem::FindCoverPath(const ACoverObject* CoverObject, const FVector2D& Position,
+    FPolyline2D& OutPath) const
+{
+    // Reads the groups as they are, a pending rebuild runs on the next tick and the path of the
+    // current tick may be one tick old, which a unit walking along the wall does not notice.
+    const FCoverGroup* OwnGroup = Groups.FindByPredicate([CoverObject](const FCoverGroup& Group)
+    {
+        return Group.Contains(CoverObject);
+    });
+    if (!OwnGroup)
+    {
+        return false;
+    }
+
+    bool bFound = false;
+    double BestDistanceSquared = TNumericLimits<double>::Max();
+    for (const FCoverLoop& Loop : OwnGroup->GetLoops())
+    {
+        const FPolyline2D Candidate = FCoverGeometry::ToPolyline2D(Loop.Points, Loop.bIsClosed);
+        if (!Candidate.IsValid())
+        {
+            continue;
+        }
+
+        double DistanceAlong = 0.0;
+        const FVector2D ClosestPoint = Candidate.FindClosestPoint(Position, DistanceAlong);
+        const double DistanceSquared = FVector2D::DistSquared(Position, ClosestPoint);
+        if (DistanceSquared < BestDistanceSquared)
+        {
+            BestDistanceSquared = DistanceSquared;
+            OutPath = Candidate;
+            bFound = true;
+        }
+    }
+
+    return bFound;
+}
+
 void UCoverSubsystem::RebuildGroups()
 {
     // Cleared first, so reading the groups while rebuilding (debug drawing) does not trigger another rebuild.
