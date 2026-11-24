@@ -67,6 +67,12 @@ public:
     }
 
     /**
+     * @brief Collects the distance of every point along the path, measured from the first point.
+     * @param OutDistances is filled with one distance in cm per point in point order, previous content is discarded.
+     */
+    void CollectPointDistances(TArray<double>& OutDistances) const;
+
+    /**
      * @brief Gets a segment from a point to the next point.
      * @param Index is the index of the point the segment starts at.
      * @return Segment, the last segment of a closed polyline ends at the first point.

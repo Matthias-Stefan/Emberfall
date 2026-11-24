@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Emberfall/Core/Geometry/Polyline2D.h"
+#include "Emberfall/Gameplay/World/Cover/CoverPathSpans.h"
 #include "Emberfall/Gameplay/World/Cover/CoverTypes.h"
 
 #include "CoreMinimal.h"
@@ -66,6 +67,13 @@ public:
     bool IsEntering() const { return CoverState == ECoverState::Entering; }
 
     /**
+     * @brief Tests whether the owning unit is walking along the cover path.
+     * @return @c true while the unit has not reached its target distance in cover, otherwise @c false.
+     */
+    UFUNCTION(BlueprintPure, Category = "Cover")
+    bool IsWalkingInCover() const { return bWalkingInCover; }
+
+    /**
      * @brief Tests whether the cover animation has to be mirrored for the side the unit walked to last.
      * @return @c true after walking counterclockwise seen from the wall's outside, otherwise @c false, stays until the unit walks the other way.
      */
@@ -85,6 +93,11 @@ private:
      * @param DeltaTime is the time since the last tick in seconds.
      */
     void TickInCover(float DeltaTime);
+
+    /**
+     * @brief Brings @c DistanceAlongPath back into the path length if the path is closed.
+     */
+    void NormalizeDistanceAlongPath();
 
     /**
      * @brief Computes the direction pointing away from the wall at a position on the cover path.
@@ -120,6 +133,9 @@ private:
     /** @brief Length of @c CoverPath in cm. */
     double CoverPathLength = 0.0;
 
+    /** @brief Walkable stretches of @c CoverPath between its corners and ends. */
+    FCoverPathSpans CoverSpans;
+
     /** @brief Current position of the unit along @c CoverPath in cm, measured from the first point. */
     double DistanceAlongPath = 0.0;
 
@@ -128,6 +144,9 @@ private:
 
     /** @brief Whether the right normal of the path segments points away from the wall, the same for the whole path. */
     bool bOutwardIsRightNormal = false;
+
+    /** @brief Whether the unit is walking along the cover path, drives the cover walk animation because the movement component sees no velocity. */
+    bool bWalkingInCover = false;
 
     /** @brief Whether the cover animation is mirrored, set by the last walking direction and kept while the unit stands. */
     bool bMirrorCover = false;

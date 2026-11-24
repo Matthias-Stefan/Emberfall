@@ -100,6 +100,17 @@ public:
     float CoverFacingYawOffset = 0.0f;
 
     //~=============================================================================
+    // Corners
+
+    /** @brief Smallest turn of the cover path at a point that counts as a corner the unit stops in front of in degrees. */
+    UPROPERTY(Config, EditAnywhere, Category = "Corners", meta = (ClampMin = "0.0", ClampMax = "180.0", Units = "deg"))
+    float CornerMinAngle = 30.0f;
+
+    /** @brief Distance in front of a corner or path end at which the unit stops in cm. */
+    UPROPERTY(Config, EditAnywhere, Category = "Corners", meta = (ClampMin = "0.0", Units = "cm"))
+    float CornerStopMargin = 50.0f;
+
+    //~=============================================================================
     // Debug
 
     /** @brief Whether the grid cells, groups, enabled sides and outline loops are drawn when the world begins play. */

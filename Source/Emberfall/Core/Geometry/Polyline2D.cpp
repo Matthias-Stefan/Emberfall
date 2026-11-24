@@ -18,6 +18,23 @@ double FPolyline2D::GetLength() const
     return Length;
 }
 
+void FPolyline2D::CollectPointDistances(TArray<double>& OutDistances) const
+{
+    OutDistances.Reset(Points.Num());
+
+    double DistanceAlong = 0.0;
+    for (int32 Index = 0; Index < Points.Num(); ++Index)
+    {
+        OutDistances.Add(DistanceAlong);
+
+        // The last point of an open path has no segment, the closing segment of a closed path ends at the first point.
+        if (Index < GetSegmentNum())
+        {
+            DistanceAlong += GetSegment(Index).GetLength();
+        }
+    }
+}
+
 double FPolyline2D::ToPathDistance(double Distance, double TotalLength) const
 {
     // Open paths stop at the ends, closed paths wrap around.

@@ -3,6 +3,7 @@
 #include "Emberfall/Gameplay/Characters/Components/PlayerUnitCoverComponent.h"
 
 #include "Emberfall/Gameplay/World/Cover/CoverLog.h"
+#include "Emberfall/Gameplay/World/Cover/CoverPathSpans.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSettings.h"
 #include "Emberfall/Gameplay/World/Cover/CoverSubsystem.h"
 
@@ -116,6 +117,13 @@ bool UPlayerUnitCoverComponent::TryEnterCover()
     const FSegment2D ReferenceSegment = CoverPath.GetSegmentAtDistance(ReferenceDistance);
     bOutwardIsRightNormal = FVector2D::DotProduct(ReferenceSegment.GetRightNormal(), BestHit->OutwardNormal) >= 0.0;
 
+    // Corners and path ends limit where the unit may stand. If it enters in front of one, it walks to the closest free spot.
+    CoverSpans = FCoverPathSpans::Build(CoverPath, bOutwardIsRightNormal, Settings.CornerMinAngle,
+        Settings.CornerStopMargin);
+    DistanceAlongPath = CoverSpans.FindNearestFreeDistance(DistanceAlongPath);
+    NormalizeDistanceAlongPath();
+    TargetDistanceAlongPath = DistanceAlongPath;
+
     // A running AI move would fight the cover movement.
     if (const APawn* Pawn = Cast<APawn>(Unit))
     {
@@ -136,8 +144,10 @@ void UPlayerUnitCoverComponent::LeaveCover()
     CoverState = ECoverState::None;
     CoverPath = FPolyline2D::Invalid;
     CoverPathLength = 0.0;
+    CoverSpans = FCoverPathSpans();
     DistanceAlongPath = 0.0;
     TargetDistanceAlongPath = 0.0;
+    bWalkingInCover = false;
     SetComponentTickEnabled(false);
 }
 
@@ -195,21 +205,8 @@ void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
 
     const UCoverSettings& Settings = CoverSubsystem->GetSettings();
 
-    // Signed distance still to walk, positive runs toward the end of the path.
-    double Remaining = TargetDistanceAlongPath - DistanceAlongPath;
-    if (CoverPath.IsClosed() && CoverPathLength > 0.0)
-    {
-        // A closed path has two ways to the target, take the shorter one.
-        Remaining = FMath::Fmod(Remaining, CoverPathLength);
-        if (Remaining > CoverPathLength * 0.5)
-        {
-            Remaining -= CoverPathLength;
-        }
-        else if (Remaining < -CoverPathLength * 0.5)
-        {
-            Remaining += CoverPathLength;
-        }
-    }
+    // Signed distance still to walk, positive runs toward the end of the path. Corners and path ends cut it short.
+    const double Remaining = CoverSpans.ComputeWalkDelta(DistanceAlongPath, TargetDistanceAlongPath);
 
     // The side the unit walks to decides the mirroring, seen from the wall's outside. It is kept while the unit stands.
     if (!FMath::IsNearlyZero(Remaining))
@@ -224,22 +221,15 @@ void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
     bool bArrived = false;
     if (FMath::Abs(Remaining) <= MaxStep)
     {
-        DistanceAlongPath = TargetDistanceAlongPath;
+        DistanceAlongPath += Remaining;
         bArrived = true;
     }
     else
     {
         DistanceAlongPath += FMath::Sign(Remaining) * MaxStep;
     }
-
-    if (CoverPath.IsClosed() && CoverPathLength > 0.0)
-    {
-        DistanceAlongPath = FMath::Fmod(DistanceAlongPath, CoverPathLength);
-        if (DistanceAlongPath < 0.0)
-        {
-            DistanceAlongPath += CoverPathLength;
-        }
-    }
+    bWalkingInCover = !bArrived;
+    NormalizeDistanceAlongPath();
 
     const FVector2D PathPoint = CoverPath.GetPointAtDistance(DistanceAlongPath);
     Unit->SetActorLocation(FVector(PathPoint.X, PathPoint.Y, Unit->GetActorLocation().Z));
@@ -249,6 +239,20 @@ void UPlayerUnitCoverComponent::TickInCover(float DeltaTime)
     if (bArrived && bTurned)
     {
         SetComponentTickEnabled(false);
+    }
+}
+
+void UPlayerUnitCoverComponent::NormalizeDistanceAlongPath()
+{
+    if (!CoverPath.IsClosed() || CoverPathLength <= 0.0)
+    {
+        return;
+    }
+
+    DistanceAlongPath = FMath::Fmod(DistanceAlongPath, CoverPathLength);
+    if (DistanceAlongPath < 0.0)
+    {
+        DistanceAlongPath += CoverPathLength;
     }
 }
 
